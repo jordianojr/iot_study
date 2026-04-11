@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CS462 IoT Flashcards</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 24px 32px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #475569;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip:hover { border-color: #818cf8; color: #c7d2fe; }
+    .chip.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
+    .progress-bar {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 32px;
+      margin-top: 20px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #4f46e5;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+
+    .card-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .card-container {
+      width: 100%;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .card {
+      width: 100%;
+      min-height: 300px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s;
+    }
+
+    .card.flipped { transform: rotateX(180deg); }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 16px;
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .card-front {
+      background: linear-gradient(135deg, #1e293b, #334155);
+      border: 1px solid #475569;
+    }
+
+    .card-back {
+      background: linear-gradient(135deg, #312e81, #4338ca);
+      border: 1px solid #6366f1;
+      transform: rotateX(180deg);
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #94a3b8;
+      margin-bottom: 20px;
+    }
+
+    .card-back .card-label { color: #c7d2fe; }
+
+    .card-chapter {
+      font-size: 0.75rem;
+      color: #818cf8;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .card-text {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      color: #f1f5f9;
+    }
+
+    .card-back .card-text { color: #e0e7ff; }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 16px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+      align-items: center;
+    }
+
+    .nav button {
+      padding: 12px 28px;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav button:hover { background: #334155; border-color: #818cf8; }
+    .nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .shuffle-btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .shuffle-btn:hover { border-color: #818cf8; color: #c7d2fe; }
+
+    .keyboard-hints {
+      margin-top: 16px;
+      font-size: 0.75rem;
+      color: #475569;
+    }
+
+    .keyboard-hints kbd {
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #475569;
+      background: #1e293b;
+      font-family: inherit;
+      font-size: 0.7rem;
+    }
+
+    .score-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .score-btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .score-btn.know {
+      background: #065f46;
+      color: #6ee7b7;
+    }
+
+    .score-btn.know:hover { background: #047857; }
+
+    .score-btn.dontknow {
+      background: #7f1d1d;
+      color: #fca5a5;
+    }
+
+    .score-btn.dontknow:hover { background: #991b1b; }
+
+    .score-display {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .card-face { padding: 28px 20px; }
+      .card-text { font-size: 1rem; }
+      header { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CS462 IoT Flashcards</h1>
+  <div class="controls" id="filters"></div>
+</header>
+
+<div class="progress-bar">
+  <span class="progress-text" id="progress-text">1 / 140</span>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+</div>
+
+<div class="card-area">
+  <div class="card-container" id="card-container" onclick="flipCard()">
+    <div class="card" id="card">
+      <div class="card-face card-front">
+        <div class="card-chapter" id="front-chapter"></div>
+        <div class="card-label">Question</div>
+        <div class="card-text" id="front-text"></div>
+        <div class="hint">Click or press Space to reveal</div>
+      </div>
+      <div class="card-face card-back">
+        <div class="card-chapter" id="back-chapter"></div>
+        <div class="card-label">Answer</div>
+        <div class="card-text" id="back-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="score-row" id="score-row">
+    <button class="score-btn dontknow" onclick="markCard(false)">Don't Know</button>
+    <button class="score-btn know" onclick="markCard(true)">Got It</button>
+  </div>
+  <div class="score-display" id="score-display"></div>
+
+  <div class="nav">
+    <button id="prev-btn" onclick="prevCard()">Prev</button>
+    <button class="shuffle-btn" onclick="shuffleDeck()">Shuffle</button>
+    <button id="next-btn" onclick="nextCard()">Next</button>
+  </div>
+
+  <div class="keyboard-hints">
+    <kbd>&larr;</kbd> Prev &nbsp; <kbd>Space</kbd> Flip &nbsp; <kbd>&rarr;</kbd> Next &nbsp;
+    <kbd>1</kbd> Don't Know &nbsp; <kbd>2</kbd> Got It
+  </div>
+</div>
+
+<script>
+const allCards = [
+  // Chapter 1: Introduction to IoT
+  { ch: "Introduction to IoT", q: "What is IoT?", a: "A global network of connected physical objects (things) equipped with sensors that can collect, send, and receive data over the internet." },
+  { ch: "Introduction to IoT", q: "What are the 3 core elements of IoT?", a: "<b>Things</b> (smart objects with sensors), <b>Connectivity</b> (network technologies for communication), <b>Sense-making</b> (processing raw data into insights)." },
+  { ch: "Introduction to IoT", q: "What type of data do IoT devices commonly produce?", a: "<b>Time-series data</b> — data points paired with timestamps." },
+  { ch: "Introduction to IoT", q: "What is Industrial IoT?", a: "Smart devices used in sectors like manufacturing, retail, healthcare to improve business processes with real-time data." },
+  { ch: "Introduction to IoT", q: "Name 3 IoT applications.", a: "Connected cars, connected homes, smart cities, smart buildings, industrial IoT (any 3)." },
+  { ch: "Introduction to IoT", q: "What drove the rise of IoT?", a: "The miniaturization of computing chips, making them small and cheap enough to embed in everyday objects." },
+
+  // Chapter 2: Things & Sensors
+  { ch: "Things & Sensors", q: "What 4 capabilities make a 'thing' smart?", a: "<b>Sensing</b>, <b>Control</b>, <b>Computation</b>, <b>Networking</b>." },
+  { ch: "Things & Sensors", q: "What is the formula for a 'Thing' in IoT?", a: "Thing = Physical Object + Embedded Device monitoring it." },
+  { ch: "Things & Sensors", q: "Internet of Things vs Intranet of Things?", a: "IoT devices connect via the <b>Internet</b>. Intranet of Things devices only communicate with each other <b>without</b> the Internet." },
+  { ch: "Things & Sensors", q: "What does a sensor do?", a: "Converts a <b>physical quantity</b> (e.g., temperature) into an <b>electrical quantity</b> (e.g., voltage)." },
+  { ch: "Things & Sensors", q: "Name the 5 categories of sensors.", a: "Environmental, Position, Vision, Chemical, Acoustic." },
+  { ch: "Things & Sensors", q: "Periodic vs event-driven sensor readings?", a: "<b>Periodic</b>: sends readings at fixed time intervals. <b>Event-driven</b>: sends readings only when an event occurs." },
+  { ch: "Things & Sensors", q: "What is a beacon?", a: "A low-cost, low-powered device that periodically emits a signal (usually via Bluetooth Low Energy)." },
+  { ch: "Things & Sensors", q: "What is geofencing?", a: "Defining a virtual region around a geographical location and monitoring when devices enter or exit." },
+  { ch: "Things & Sensors", q: "What is ranging (proximity sensing)?", a: "Determining the approximate distance between beacons and receivers." },
+  { ch: "Things & Sensors", q: "Why are beacons useful for indoor locations?", a: "GPS doesn't work well indoors (malls, airports). Beacons provide indoor positioning." },
+  { ch: "Things & Sensors", q: "Describe 'Fixed Beacons, Mobile Receivers'.", a: "Beacons are fixed in locations (e.g., store); receivers move (e.g., customer phones). Used for retail offers." },
+  { ch: "Things & Sensors", q: "Describe 'Mobile Beacons, Fixed Receivers'.", a: "Items tagged with beacons; receivers at fixed points. Used for warehouse inventory tracking." },
+
+  // Chapter 3: TCP/IP & HTTP REST
+  { ch: "TCP/IP & HTTP REST", q: "Name the 5 layers of the TCP/IP model (top to bottom).", a: "Application, Transport, Network, Link, Physical." },
+  { ch: "TCP/IP & HTTP REST", q: "What does the Application layer do?", a: "Provides services to applications (web browsing, email). Protocols: HTTP, DNS, MQTT." },
+  { ch: "TCP/IP & HTTP REST", q: "What does the Transport layer do?", a: "Ensures data is delivered to the correct <b>processes</b>. Protocols: TCP, UDP, QUIC." },
+  { ch: "TCP/IP & HTTP REST", q: "What does the Network layer do?", a: "Assigns network addresses and routes data across multiple networks. Protocol: IP." },
+  { ch: "TCP/IP & HTTP REST", q: "What does the Link layer do?", a: "Provides reliable data transfer across <b>one single link</b>. Protocols: Wi-Fi, Ethernet." },
+  { ch: "TCP/IP & HTTP REST", q: "Can the Application layer send data directly to the Network layer?", a: "<b>No.</b> Each layer can only interact with the layer directly above and below it." },
+  { ch: "TCP/IP & HTTP REST", q: "What is packetization?", a: "Splitting data into small <b>packets</b>, adding headers at each layer, and reassembling at the destination." },
+  { ch: "TCP/IP & HTTP REST", q: "What are headers vs payload in a packet?", a: "<b>Headers</b>: metadata (source, destination, etc.). <b>Payload</b>: the actual application data." },
+  { ch: "TCP/IP & HTTP REST", q: "What does 'IP-based' mean?", a: "A device/network that uses the Internet Protocol. IP-based devices can communicate with any other IP-based devices." },
+  { ch: "TCP/IP & HTTP REST", q: "What is HTTP?", a: "An application-layer protocol for transferring data. It is <b>stateless</b> — each request is independent of any previous requests." },
+  { ch: "TCP/IP & HTTP REST", q: "What are the 4 HTTP REST methods?", a: "<b>GET</b> (retrieve), <b>POST</b> (create), <b>PUT</b> (update), <b>DELETE</b> (remove)." },
+  { ch: "TCP/IP & HTTP REST", q: "What are the 4 steps of an HTTP interaction?", a: "1. Client sends request → 2. Server processes → 3. Server sends response → 4. Client processes response." },
+
+  // Chapter 4: MQTT
+  { ch: "MQTT", q: "What is MQTT?", a: "A lightweight, <b>publish-subscribe</b> messaging protocol designed for constrained devices on unreliable networks. Ideal for IoT." },
+  { ch: "MQTT", q: "What transport protocol does MQTT use?", a: "<b>TCP</b> (Transmission Control Protocol)." },
+  { ch: "MQTT", q: "What is the publish/subscribe pattern?", a: "Publishers send messages to a <b>broker</b>, which forwards them to <b>subscribers</b>. Publishers and subscribers never communicate directly." },
+  { ch: "MQTT", q: "What are the 3 types of decoupling in pub/sub?", a: "<b>Space</b> (don't know each other's addresses), <b>Time</b> (don't need to be online simultaneously), <b>Synchronization</b> (don't wait for each other)." },
+  { ch: "MQTT", q: "What is the MQTT broker's job?", a: "Receives all messages, filters by topic, determines subscribers, distributes messages. Also handles auth and session data." },
+  { ch: "MQTT", q: "Why is the broker a concern in MQTT?", a: "It's the <b>single point of failure</b> — every message passes through it. Must be highly scalable and failure-resistant." },
+  { ch: "MQTT", q: "What messages are exchanged during an MQTT connection?", a: "Client sends <b>CONNECT</b>, broker responds with <b>CONNACK</b> + status code." },
+  { ch: "MQTT", q: "What is the MQTT Client ID used for?", a: "Uniquely identifies each client. The broker uses it to identify the client and its state. Must be unique per client/broker pair." },
+  { ch: "MQTT", q: "Is MQTT data-agnostic?", a: "<b>Yes.</b> Payloads can be binary, text, XML, JSON, or any format." },
+  { ch: "MQTT", q: "Do new MQTT subscribers receive past messages?", a: "<b>No</b>, not by default. Only future messages unless <b>Retained Messages</b> are enabled." },
+  { ch: "MQTT", q: "What is an MQTT topic?", a: "A hierarchical string (separated by <code>/</code>) used by the broker to filter messages. E.g., <code>campus/soss/level3/room321</code>." },
+  { ch: "MQTT", q: "Do topics need to be created before use in MQTT?", a: "<b>No.</b> The broker accepts any valid topic without prior initialization." },
+  { ch: "MQTT", q: "What does the <code>+</code> wildcard do in MQTT?", a: "<b>Single-level wildcard</b> — matches any string at one topic level. E.g., <code>campus/+/level3</code> matches <code>campus/soss/level3</code>." },
+  { ch: "MQTT", q: "What does the <code>#</code> wildcard do in MQTT?", a: "<b>Multi-level wildcard</b> — matches all remaining levels. Must be the last character. E.g., <code>campus/soss/#</code> matches everything under <code>campus/soss/</code>." },
+  { ch: "MQTT", q: "Can wildcards be used for publishing in MQTT?", a: "<b>No.</b> Wildcards can only be used for subscribing, not publishing." },
+  { ch: "MQTT", q: "Why should you not subscribe to <code>#</code>?", a: "It receives ALL messages on the broker, which can overwhelm the client and consume massive bandwidth." },
+  { ch: "MQTT", q: "Name 3 MQTT topic best practices.", a: "No leading <code>/</code>, no spaces, keep topics short, use ASCII only, embed Client ID, don't subscribe to <code>#</code> (any 3)." },
+  { ch: "MQTT", q: "What are topics starting with <code>$</code> in MQTT?", a: "Predefined by the broker for special uses. Clients typically cannot create new <code>$</code> topics." },
+
+  // Chapter 5: Visualization
+  { ch: "Visualization", q: "What is data visualization?", a: "Converting information into a visual format to help people understand, compare, and make decisions." },
+  { ch: "Visualization", q: "What are the 3 data characteristics for choosing visualizations?", a: "<b>Categorical</b> (grouped into categories), <b>Ordinal</b> (follows a sequence), <b>Continuous</b> (spans over time)." },
+  { ch: "Visualization", q: "When would you use a time series visualization?", a: "When showing how data values change over time (e.g., temperature over a month). X-axis = time, Y-axis = value." },
+  { ch: "Visualization", q: "When would you use a pie chart?", a: "When showing <b>parts of a whole</b> — proportions that add up to a total." },
+  { ch: "Visualization", q: "When would you use a heatmap?", a: "To visualize <b>histograms over time</b> — identifying trends in data distribution across time periods." },
+  { ch: "Visualization", q: "Bar gauge vs regular bar chart?", a: "A bar gauge is an <b>indicator</b> showing a metric within a range (like a thermometer). A bar chart <b>compares values</b> across categories." },
+  { ch: "Visualization", q: "What is a state timeline?", a: "Shows how states change over time using bars/bands. The length indicates the <b>duration</b> of a state (e.g., idle → running → overheated)." },
+  { ch: "Visualization", q: "State timeline vs status history?", a: "Status history does <b>not merge</b> consecutive values; state timeline does." },
+  { ch: "Visualization", q: "What is alert fatigue?", a: "When an overwhelming number of alerts desensitizes people, leading to missed, ignored, or delayed responses." },
+  { ch: "Visualization", q: "Name 3 ways to combat alert fatigue.", a: "Set intelligent thresholds, find a balance, set tiered alert priorities, ensure alerts are actionable (any 3)." },
+  { ch: "Visualization", q: "What are the 3 Material Design visualization principles?", a: "<b>Accurate</b> (no distortion), <b>Helpful</b> (context and insights), <b>Scalable</b> (works across screen sizes)." },
+  { ch: "Visualization", q: "What is a geomap used for?", a: "Displaying information on a world map using location-based data (e.g., vehicle tracking, earthquake sensors)." },
+
+  // Chapter 6: Architecture & Design Patterns
+  { ch: "Architecture & Design", q: "Why decouple ingestion from processing?", a: "Data ingestion and processing rates differ. Decoupling lets you <b>scale processing independently</b> without losing incoming data." },
+  { ch: "Architecture & Design", q: "What does 'design for offline behavior' mean?", a: "Devices may go offline for long periods. They must be <b>delay-tolerant</b> and handle intermittent connectivity. Monitor silent devices." },
+  { ch: "Architecture & Design", q: "What does 'lean data at edge, enrich in cloud' mean?", a: "Store compact data on devices (e.g., <code>0x14</code>). In the cloud, add human-readable context (e.g., full JSON)." },
+  { ch: "Architecture & Design", q: "What are heartbeats in IoT?", a: "Regular status check messages sent by devices to confirm they're alive. Detect offline devices." },
+  { ch: "Architecture & Design", q: "What is Zero Trust?", a: "A security concept: <b>never automatically trust anything</b> inside or outside the network. Verify everything before granting access." },
+  { ch: "Architecture & Design", q: "What is least privilege in IoT?", a: "Devices have fine-grained permissions restricting which topics they can use. A compromised device has limited impact." },
+  { ch: "Architecture & Design", q: "What is OTA updating?", a: "<b>Over-the-Air</b> updates: remotely updating firmware. Should support targeting specific devices, rollout, tracking, and rollback." },
+  { ch: "Architecture & Design", q: "What is the Command design pattern?", a: "No action is deemed successful unless <b>acknowledged</b>. Publisher sends command → device executes → device sends completion message." },
+  { ch: "Architecture & Design", q: "What is the Device Bootstrap pattern?", a: "Two-phase: 1. <b>Registration Authority</b> validates device → issues short-lived credentials. 2. <b>Privilege Escalator</b> → issues long-lived credentials." },
+  { ch: "Architecture & Design", q: "What is the Device State Replica pattern?", a: "Tracks <b>current state</b>, <b>desired state</b>, and <b>delta</b> (difference). Enables reliable state sync even with intermittent connectivity." },
+  { ch: "Architecture & Design", q: "What 3 states does Device State Replica track?", a: "<b>Current state</b> (what device reports), <b>Desired state</b> (what system wants), <b>Delta</b> (difference between them)." },
+  { ch: "Architecture & Design", q: "What is the Gateway pattern?", a: "A gateway relays messages between devices (without internet) and cloud servers. 'Up' mirrors to server; 'Down' mirrors to device." },
+  { ch: "Architecture & Design", q: "Why buffer messages with queues?", a: "If incoming rate > processing rate, data is lost. Queues absorb the difference and allow scaling when they fill up." },
+  { ch: "Architecture & Design", q: "How should you simulate IoT at production scale?", a: "Ramp up incrementally: <b>10% → 25% → 50% → 100%</b> of traffic. Monitor performance at each stage." },
+
+  // Chapter 7: LoRaWAN
+  { ch: "LoRaWAN", q: "What is the relationship between frequency and range?", a: "<b>Higher frequency = lower range.</b> Signals are more susceptible to obstacles and interference." },
+  { ch: "LoRaWAN", q: "What is the relationship between bandwidth and data rate?", a: "<b>Higher bandwidth = higher data rate.</b> Wider channel = more data can pass through." },
+  { ch: "LoRaWAN", q: "What is LoRa?", a: "A <b>physical-layer</b> modulation technique for wireless long-range networks using Chirp Spread Spectrum technology." },
+  { ch: "LoRaWAN", q: "What is a chirp?", a: "A signal where the frequency changes over time. <b>Up-chirp</b> = frequency increases. <b>Down-chirp</b> = frequency decreases." },
+  { ch: "LoRaWAN", q: "What is spreading factor in LoRa?", a: "Rate of frequency change. <b>High SF</b> = slow change → longer range, lower data rate. <b>Low SF</b> = fast change → shorter range, higher data rate." },
+  { ch: "LoRaWAN", q: "What is duty cycle in LoRa?", a: "Fraction of time a device transmits. Typically <b>1%</b> (e.g., transmit 1s every 100s). Regulated by governments." },
+  { ch: "LoRaWAN", q: "What is LoRaWAN?", a: "A <b>Low Power, Wide Area</b> networking protocol built on top of LoRa for connecting battery-powered things to the internet." },
+  { ch: "LoRaWAN", q: "What frequency range does LoRaWAN operate in?", a: "<b>Sub-GHz</b>: 433 MHz, 868 MHz, 920 MHz." },
+  { ch: "LoRaWAN", q: "What is the max payload of a LoRaWAN packet?", a: "~<b>200 bytes</b> (can be as low as 11 bytes in some regions)." },
+  { ch: "LoRaWAN", q: "What is Adaptive Data Rate in LoRaWAN?", a: "The network server optimizes <b>spreading factor, bandwidth, and power</b> for each device individually to maximize battery life and capacity." },
+  { ch: "LoRaWAN", q: "What topology does LoRaWAN use?", a: "<b>Star-of-stars</b>: end-devices → gateways (radio) → network server (internet)." },
+  { ch: "LoRaWAN", q: "What are the 2 encryption layers in LoRaWAN?", a: "128-bit <b>Network Session Key</b> (device ↔ network server) and 128-bit <b>Application Session Key</b> (end-to-end at application level)." },
+  { ch: "LoRaWAN", q: "What does a LoRaWAN Radio Gateway do?", a: "Forwards all received packets to the Network Server <b>unprocessed</b>. Operates at the physical layer. Does not process data." },
+  { ch: "LoRaWAN", q: "What does the LoRaWAN Network Server do?", a: "Center of star topology. Handles MAC layer, data rate adaptation, routing, <b>deduplication</b>, forwarding to Application Servers." },
+  { ch: "LoRaWAN", q: "Uplink vs downlink in LoRaWAN?", a: "<b>Uplink</b>: End-Device → ALL gateways in range → Network Server (deduplicated). <b>Downlink</b>: Network Server → ONE gateway → End-Device." },
+  { ch: "LoRaWAN", q: "Describe LoRaWAN Class A.", a: "Default. Device sends anytime, opens <b>2 short receive windows</b> after. Server can only send AFTER device sends. <b>Lowest power</b>." },
+  { ch: "LoRaWAN", q: "Describe LoRaWAN Class B.", a: "Like Class A + time-synchronized <b>ping slots</b> for predictable downlink. Beacons every 128s. Medium power/latency." },
+  { ch: "LoRaWAN", q: "Describe LoRaWAN Class C.", a: "Receive window <b>continuously open</b> except while transmitting. <b>Lowest latency, highest power.</b>" },
+  { ch: "LoRaWAN", q: "What are RX1 and RX2 in Class A?", a: "Two receive windows after uplink. <b>RX1</b>: frequency/data rate based on uplink. <b>RX2</b>: fixed frequency (configurable). Two windows improve reception odds." },
+  { ch: "LoRaWAN", q: "ABP vs OTA activation in LoRaWAN?", a: "<b>ABP</b>: device directly tied to specific network (no Join). <b>OTA</b>: device performs Join procedure (for consumer devices)." },
+  { ch: "LoRaWAN", q: "What is a LoRaWAN relay?", a: "An end-device that forwards frames between another end-device and a gateway when direct coverage is insufficient. Uses <b>Wake On Radio</b>." },
+
+  // Chapter 8: Thread
+  { ch: "Thread", q: "What is Thread?", a: "An open standard for reliable, low-power, wireless <b>mesh networking</b> designed for IP-based networking." },
+  { ch: "Thread", q: "What are the 2 main node roles in Thread?", a: "<b>Router</b> (forwards packets, radio always on) and <b>End Device</b> (communicates with one parent Router, can sleep)." },
+  { ch: "Thread", q: "What is a Full Thread Device (FTD)?", a: "Radio always on, maintains <b>routing table</b>, subscribes to all-routers multicast." },
+  { ch: "Thread", q: "What is a REED?", a: "<b>Router-Eligible End Device.</b> Can become a Router when needed, but currently operates as an End Device. Promotion is automatic." },
+  { ch: "Thread", q: "What is a Sleepy End Device (SED)?", a: "A Minimal Thread Device that turns off its radio during idle and <b>wakes periodically to poll</b> its parent for messages." },
+  { ch: "Thread", q: "What is the Thread Leader?", a: "A Router that <b>manages all Routers</b>. Dynamically self-elected. One per partition. If it fails, another Router takes over." },
+  { ch: "Thread", q: "What is a Thread Border Router?", a: "Forwards between Thread and non-Thread networks (e.g., Wi-Fi). Provides <b>IPv6 connectivity</b>, service discovery, commissioning." },
+  { ch: "Thread", q: "What is a Thread partition?", a: "A group of devices that can communicate internally but not with other groups (out of radio range). <b>Auto-merge</b> when reconnected." },
+  { ch: "Thread", q: "What are the device limits in Thread?", a: "<b>1</b> Leader, max <b>32</b> Routers (target 16-23), <b>511</b> End Devices per Router." },
+  { ch: "Thread", q: "How does Thread avoid single points of failure?", a: "Leader auto-elected if current fails, SEDs can switch parents, Router and Border Router roles can co-exist on same device." },
+  { ch: "Thread", q: "What are the 3 IPv6 scopes in Thread?", a: "<b>Link-Local</b> (single radio hop, fe80::/16), <b>Mesh-Local</b> (entire Thread network, fd00::/8), <b>Global</b> (outside Thread)." },
+  { ch: "Thread", q: "RLOC vs ML-EID?", a: "<b>RLOC</b>: based on topology, changes with topology, for routing. <b>ML-EID</b>: independent of topology, used by applications." },
+  { ch: "Thread", q: "How does a device join an existing Thread network?", a: "1. Child sends multicast Parent Request → 2. Routers/REEDs respond → 3. Child sends Child ID Request → 4. Parent confirms." },
+  { ch: "Thread", q: "What is MLE in Thread?", a: "<b>Mesh Link Establishment</b> — protocol to configure links, discover neighbors, determine link quality, disseminate network info." },
+  { ch: "Thread", q: "What is the Connected Dominating Set (CDS)?", a: "Any Router can reach any other Router via <b>Router-only paths</b>, and every End Device is <b>directly connected</b> to a Router." },
+  { ch: "Thread", q: "When does a REED upgrade to Router?", a: "When it's the only node in range of a new End Device wanting to join, or when router count drops <b>below 16</b>." },
+
+  // Chapter 9: Matter
+  { ch: "Matter", q: "What is Matter?", a: "An <b>interoperable standard</b> for smart home devices. IPv6-based application-layer protocol over Wi-Fi, Ethernet, and Thread." },
+  { ch: "Matter", q: "What problem does Matter solve?", a: "Replaces <b>proprietary smart home protocols</b> so devices from different manufacturers can work together seamlessly." },
+  { ch: "Matter", q: "What is the Matter Device Data Model hierarchy?", a: "Device → <b>Node</b> → <b>Endpoint</b> → <b>Cluster</b> → (Attributes, Commands, Events)." },
+  { ch: "Matter", q: "What is a Node in Matter?", a: "A unique identifiable and addressable resource in a network that a user perceives as <b>functionally whole</b>." },
+  { ch: "Matter", q: "What is an Endpoint in Matter?", a: "A <b>feature set</b> on a Node. E.g., one endpoint for lighting, another for motion detection." },
+  { ch: "Matter", q: "What is a Cluster in Matter?", a: "Groups <b>specific functionality</b> (e.g., On/Off, Door Lock). Contains Attributes, Commands, and Events." },
+  { ch: "Matter", q: "What is Endpoint 0 reserved for?", a: "<b>Utility Clusters</b> (discovery, addressing, diagnostics, software updates)." },
+  { ch: "Matter", q: "Attributes vs Events in Matter?", a: "<b>Attributes</b>: current states/values. <b>Events</b>: journal of <b>past</b> state transitions with timestamps." },
+  { ch: "Matter", q: "What is a Device Type in Matter?", a: "An officially defined collection of mandatory and optional Clusters. Must implement <b>all mandatory Clusters</b>." },
+  { ch: "Matter", q: "Client vs Server Clusters in Matter?", a: "<b>Server</b>: stateful, holds Attributes/Events/Commands. <b>Client</b>: stateless, initiates interactions with Server Clusters." },
+  { ch: "Matter", q: "Can a Node be both Client and Server?", a: "<b>Yes.</b> A node can be Server for some Clusters and Client for others. Relationships are <b>horizontal</b>, not hierarchical." },
+  { ch: "Matter", q: "What is the Descriptor Cluster?", a: "Provides <b>introspection</b>: lists all Server/Client Clusters, Device Types, and Parts on an Endpoint. Required on every Device Type." },
+  { ch: "Matter", q: "What is the Interaction Model in Matter?", a: "Defines how Nodes communicate: <b>Read/Subscribe</b> to Attributes and Events, <b>Write</b> to Attributes, <b>Invoke</b> Commands." },
+  { ch: "Matter", q: "What is a Group in Matter?", a: "A mechanism to address and send messages to <b>multiple devices simultaneously</b> using a shared Group ID and IPv6 Multicast." },
+  { ch: "Matter", q: "What is the 'popcorn effect'?", a: "Human-perceptible <b>sequential delays</b> when sending individual commands to each device instead of using Groups." },
+  { ch: "Matter", q: "What are the 4 transaction types in Matter?", a: "<b>Read</b> (get data), <b>Subscribe</b> (periodic updates), <b>Write</b> (change attribute), <b>Invoke</b> (execute command)." },
+  { ch: "Matter", q: "What is a Timed Transaction in Matter?", a: "A transaction with a <b>maximum timeout</b> to prevent Intercept Attacks. Used for critical operations like locks." },
+  { ch: "Matter", q: "How does an Intercept Attack work?", a: "Eve intercepts Alice's message, prevents delivery (e.g., jamming), replays it later, and holds a second intercepted message for <b>unauthorized future replay</b>." },
+  { ch: "Matter", q: "What is a Fabric in Matter?", a: "A set of devices sharing the same <b>security domain</b>. Devices get Fabric credentials during commissioning." },
+  { ch: "Matter", q: "What is Multi-Admin in Matter?", a: "Nodes can be on <b>multiple Fabrics</b> (e.g., manufacturer's + cloud ecosystem's). Data Model is shared between Fabrics." },
+  { ch: "Matter", q: "What is commissioning in Matter?", a: "Assigning <b>Fabric credentials</b> to a new Node so it can communicate with others in the same Fabric. Uses BLE initially." },
+  { ch: "Matter", q: "Role of Border Router in Matter?", a: "Bridges Thread and Wi-Fi/Ethernet. A <b>Stub Router</b> that auto-configures IPv6, publishes mDNS for Thread Nodes, forwards only relevant packets." },
+  { ch: "Matter", q: "Why not bridge all Wi-Fi multicast into Thread?", a: "Thread is <b>low-bandwidth</b> (orders of magnitude less than Wi-Fi). Bridging all multicast would overburden and flood the network." },
+
+  // Cross-topic
+  { ch: "Cross-Topic", q: "MQTT vs HTTP REST — when to use which?", a: "<b>MQTT</b>: lightweight pub/sub, persistent connections, for constrained IoT devices. <b>HTTP REST</b>: request/response, stateless, for web services." },
+  { ch: "Cross-Topic", q: "LoRaWAN vs Thread vs Matter — how do they differ?", a: "<b>LoRaWAN</b>: long range, low data rate, star-of-stars. <b>Thread</b>: short range mesh, IP-based. <b>Matter</b>: application-layer standard over Thread/Wi-Fi/Ethernet." },
+  { ch: "Cross-Topic", q: "What layers do MQTT, LoRa, LoRaWAN, Thread, and Matter operate at?", a: "<b>MQTT</b>: Application. <b>LoRa</b>: Physical. <b>LoRaWAN</b>: Link+Network. <b>Thread</b>: Link+Network. <b>Matter</b>: Application." },
+  { ch: "Cross-Topic", q: "Compare LoRaWAN Class A, B, and C.", a: "<b>A</b>: lowest power, highest latency. <b>B</b>: medium (ping slots). <b>C</b>: highest power, lowest latency (always listening)." },
+  { ch: "Cross-Topic", q: "Thread vs LoRaWAN topology?", a: "<b>Thread</b>: mesh (devices relay for each other). <b>LoRaWAN</b>: star-of-stars (devices → gateways → server)." },
+  { ch: "Cross-Topic", q: "'No single point of failure' — Thread vs MQTT?", a: "<b>Thread</b>: Leader auto-elected, SEDs switch parents, multiple Border Routers. <b>MQTT</b>: broker IS a single point of failure." },
+];
+
+const chapters = [...new Set(allCards.map(c => c.ch))];
+let activeChapters = new Set(chapters);
+let deck = [];
+let idx = 0;
+let known = 0;
+let dontKnow = 0;
+
+function init() {
+  const filtersEl = document.getElementById('filters');
+  filtersEl.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'chip active';
+  allChip.textContent = 'All';
+  allChip.onclick = () => {
+    activeChapters = new Set(chapters);
+    updateChips();
+    buildDeck();
+  };
+  allChip.id = 'chip-all';
+  filtersEl.appendChild(allChip);
+
+  chapters.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'chip active';
+    btn.textContent = ch;
+    btn.dataset.ch = ch;
+    btn.onclick = () => {
+      if (activeChapters.size === chapters.length) {
+        activeChapters = new Set([ch]);
+      } else if (activeChapters.has(ch)) {
+        activeChapters.delete(ch);
+        if (activeChapters.size === 0) activeChapters = new Set(chapters);
+      } else {
+        activeChapters.add(ch);
+      }
+      updateChips();
+      buildDeck();
+    };
+    filtersEl.appendChild(btn);
+  });
+
+  buildDeck();
+}
+
+function updateChips() {
+  const allActive = activeChapters.size === chapters.length;
+  document.getElementById('chip-all').className = 'chip' + (allActive ? ' active' : '');
+  document.querySelectorAll('.chip[data-ch]').forEach(btn => {
+    btn.className = 'chip' + (activeChapters.has(btn.dataset.ch) ? ' active' : '');
+  });
+}
+
+function buildDeck() {
+  deck = allCards.filter(c => activeChapters.has(c.ch));
+  idx = 0;
+  known = 0;
+  dontKnow = 0;
+  render();
+}
+
+function shuffleDeck() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0;
+  known = 0;
+  dontKnow = 0;
+  render();
+}
+
+function render() {
+  if (deck.length === 0) return;
+  const card = deck[idx];
+  document.getElementById('front-chapter').textContent = card.ch;
+  document.getElementById('back-chapter').textContent = card.ch;
+  document.getElementById('front-text').textContent = card.q;
+  document.getElementById('back-text').innerHTML = card.a;
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('progress-text').textContent = `${idx + 1} / ${deck.length}`;
+  document.getElementById('progress-fill').style.width = `${((idx + 1) / deck.length) * 100}%`;
+  document.getElementById('prev-btn').disabled = idx === 0;
+  document.getElementById('next-btn').disabled = idx === deck.length - 1;
+  updateScore();
+}
+
+function flipCard() {
+  document.getElementById('card').classList.toggle('flipped');
+}
+
+function nextCard() {
+  if (idx < deck.length - 1) { idx++; render(); }
+}
+
+function prevCard() {
+  if (idx > 0) { idx--; render(); }
+}
+
+function markCard(gotIt) {
+  if (gotIt) known++; else dontKnow++;
+  updateScore();
+  if (idx < deck.length - 1) { idx++; render(); }
+}
+
+function updateScore() {
+  const total = known + dontKnow;
+  document.getElementById('score-display').textContent = total > 0
+    ? `Got It: ${known} / ${total}  (${Math.round(known / total * 100)}%)`
+    : '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); flipCard(); }
+  if (e.key === 'ArrowRight') nextCard();
+  if (e.key === 'ArrowLeft') prevCard();
+  if (e.key === '1') markCard(false);
+  if (e.key === '2') markCard(true);
+});
+
+init();
+</script>
+</body>
+</html>

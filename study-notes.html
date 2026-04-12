@@ -331,6 +331,101 @@
       padding: 0 2px;
     }
 
+    /* Explain popup */
+    .explain-btn {
+      position: absolute;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      z-index: 200;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      display: none;
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+
+    .explain-btn:hover { background: #4338ca; }
+
+    .explain-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 16px;
+      padding: 28px 24px;
+      max-width: 520px;
+      width: 90%;
+      z-index: 300;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      display: none;
+    }
+
+    .explain-popup.show { display: block; }
+
+    .explain-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 299;
+      display: none;
+    }
+
+    .explain-overlay.show { display: block; }
+
+    .explain-popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .explain-popup-term {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #818cf8;
+      font-weight: 600;
+    }
+
+    .explain-popup-close {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .explain-popup-close:hover { color: #e2e8f0; }
+
+    .explain-popup-body {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #cbd5e1;
+    }
+
+    .explain-popup-body.loading {
+      color: #64748b;
+      font-style: italic;
+    }
+
+    .explain-popup-body.error {
+      color: #fca5a5;
+    }
+
+    .explain-powered {
+      margin-top: 16px;
+      font-size: 0.7rem;
+      color: #475569;
+      text-align: right;
+    }
+
     /* Responsive */
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
@@ -1447,6 +1542,17 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
 </main>
 
+<button class="explain-btn" id="explain-btn">Explain</button>
+<div class="explain-overlay" id="explain-overlay"></div>
+<div class="explain-popup" id="explain-popup">
+  <div class="explain-popup-header">
+    <span class="explain-popup-term" id="explain-term"></span>
+    <button class="explain-popup-close" onclick="closeExplain()">&times;</button>
+  </div>
+  <div class="explain-popup-body" id="explain-body"></div>
+  <div class="explain-powered">Powered by Claude</div>
+</div>
+
 <button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#9650;</button>
 
 <script>
@@ -1545,7 +1651,86 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       e.preventDefault();
       document.getElementById('search').focus();
     }
+    if (e.key === 'Escape') closeExplain();
   });
+
+  // ============ EXPLAIN FEATURE ============
+  // REPLACE THIS with your actual Cloudflare Worker URL after deploying
+  const WORKER_URL = 'https://cs462-explain.jordianojr.workers.dev';
+
+  const explainBtn = document.getElementById('explain-btn');
+  let selectedText = '';
+  let selectedContext = '';
+
+  // Show "Explain" button near text selection
+  document.addEventListener('mouseup', e => {
+    const sel = window.getSelection();
+    const text = sel.toString().trim();
+
+    if (text.length >= 2 && text.length <= 500 && e.target.closest('.chapter-body')) {
+      selectedText = text;
+      // Get surrounding context (parent element text, truncated)
+      const parent = sel.anchorNode?.parentElement;
+      selectedContext = parent ? parent.textContent.substring(0, 200) : '';
+
+      explainBtn.style.display = 'block';
+      explainBtn.style.left = e.pageX + 'px';
+      explainBtn.style.top = (e.pageY - 40) + 'px';
+    } else {
+      explainBtn.style.display = 'none';
+    }
+  });
+
+  // Hide button when clicking elsewhere
+  document.addEventListener('mousedown', e => {
+    if (e.target !== explainBtn) {
+      explainBtn.style.display = 'none';
+    }
+  });
+
+  // Explain button click
+  explainBtn.addEventListener('click', async () => {
+    explainBtn.style.display = 'none';
+
+    const popup = document.getElementById('explain-popup');
+    const overlay = document.getElementById('explain-overlay');
+    const termEl = document.getElementById('explain-term');
+    const bodyEl = document.getElementById('explain-body');
+
+    termEl.textContent = selectedText.length > 60 ? selectedText.substring(0, 60) + '...' : selectedText;
+    bodyEl.textContent = 'Thinking...';
+    bodyEl.className = 'explain-popup-body loading';
+    popup.classList.add('show');
+    overlay.classList.add('show');
+
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: selectedText, context: selectedContext }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        bodyEl.textContent = 'Error: ' + data.error;
+        bodyEl.className = 'explain-popup-body error';
+      } else {
+        bodyEl.textContent = data.explanation;
+        bodyEl.className = 'explain-popup-body';
+      }
+    } catch (err) {
+      bodyEl.textContent = 'Could not connect to the explain service. Make sure the Cloudflare Worker is deployed and the URL is set correctly.';
+      bodyEl.className = 'explain-popup-body error';
+    }
+  });
+
+  function closeExplain() {
+    document.getElementById('explain-popup').classList.remove('show');
+    document.getElementById('explain-overlay').classList.remove('show');
+  }
+
+  document.getElementById('explain-overlay').addEventListener('click', closeExplain);
 </script>
 </body>
 </html>

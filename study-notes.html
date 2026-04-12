@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CS462 IoT Study Notes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+
+    /* Top bar */
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .topbar h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .topbar-links {
+      display: flex;
+      gap: 8px;
+    }
+
+    .topbar-links a {
+      padding: 6px 16px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .topbar-links a:hover { border-color: #818cf8; color: #c7d2fe; }
+    .topbar-links a.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 56px;
+      left: 0;
+      bottom: 0;
+      width: 280px;
+      background: #1e293b;
+      border-right: 1px solid #334155;
+      overflow-y: auto;
+      padding: 16px 0;
+      z-index: 90;
+      transition: transform 0.3s;
+    }
+
+    .sidebar.hidden { transform: translateX(-100%); }
+
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      top: 64px;
+      left: 8px;
+      z-index: 95;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .sidebar-toggle:hover { border-color: #818cf8; color: #c7d2fe; }
+
+    .toc-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #64748b;
+      padding: 0 20px;
+      margin-bottom: 12px;
+    }
+
+    .toc-link {
+      display: block;
+      padding: 8px 20px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.85rem;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .toc-link:hover {
+      color: #e2e8f0;
+      background: rgba(99, 102, 241, 0.08);
+      border-left-color: #6366f1;
+    }
+
+    .toc-link.active {
+      color: #c7d2fe;
+      background: rgba(99, 102, 241, 0.12);
+      border-left-color: #818cf8;
+    }
+
+    .toc-link.sub {
+      padding-left: 36px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .toc-link.sub:hover { color: #94a3b8; }
+
+    /* Search */
+    .search-box {
+      padding: 0 16px;
+      margin-bottom: 16px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input::placeholder { color: #64748b; }
+    .search-box input:focus { border-color: #818cf8; }
+
+    /* Main content */
+    .main {
+      margin-left: 280px;
+      margin-top: 56px;
+      padding: 40px 48px 80px;
+      max-width: 920px;
+    }
+
+    /* Chapter sections */
+    .chapter {
+      margin-bottom: 56px;
+    }
+
+    .chapter-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+    }
+
+    .chapter-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #4f46e5;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .chapter-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .chapter-collapse {
+      margin-left: auto;
+      color: #64748b;
+      font-size: 1.2rem;
+      transition: transform 0.3s;
+    }
+
+    .chapter.collapsed .chapter-collapse { transform: rotate(-90deg); }
+    .chapter.collapsed .chapter-body { display: none; }
+
+    /* Section headings */
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #c7d2fe;
+      margin: 32px 0 12px;
+      padding-left: 12px;
+      border-left: 3px solid #6366f1;
+    }
+
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      margin: 24px 0 8px;
+    }
+
+    /* Paragraphs */
+    p {
+      margin-bottom: 12px;
+      color: #cbd5e1;
+    }
+
+    /* Bold / strong */
+    strong, b { color: #f1f5f9; }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: #334155;
+      color: #e2e8f0;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #475569;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+    }
+
+    tr:hover td { background: rgba(99, 102, 241, 0.04); }
+
+    /* Lists */
+    ul, ol {
+      margin: 8px 0 16px 20px;
+      color: #cbd5e1;
+    }
+
+    li { margin-bottom: 6px; }
+    li strong { color: #e2e8f0; }
+
+    /* Code */
+    code {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.85em;
+      color: #a5b4fc;
+    }
+
+    pre {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      margin: 12px 0 16px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #a5b4fc;
+    }
+
+    /* Blockquotes / callouts */
+    blockquote {
+      margin: 12px 0 16px;
+      padding: 12px 16px;
+      border-left: 4px solid #6366f1;
+      background: rgba(99, 102, 241, 0.06);
+      border-radius: 0 8px 8px 0;
+      color: #c7d2fe;
+      font-size: 0.92rem;
+    }
+
+    /* Scroll to top */
+    .scroll-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 80;
+    }
+
+    .scroll-top.show { opacity: 1; }
+    .scroll-top:hover { background: #4338ca; }
+
+    /* Highlight for search */
+    mark {
+      background: rgba(250, 204, 21, 0.3);
+      color: #fef08a;
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-toggle { display: block; }
+      .main { margin-left: 0; padding: 32px 20px 80px; }
+    }
+
+    @media (max-width: 600px) {
+      .main { padding: 24px 16px 80px; }
+      table { font-size: 0.8rem; }
+      th, td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>CS462 IoT Study Notes</h1>
+  <div class="topbar-links">
+    <a href="index.html">Flashcards</a>
+    <a href="study-notes.html" class="active">Study Notes</a>
+  </div>
+</div>
+
+<button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">&#9776;</button>
+
+<nav class="sidebar" id="sidebar">
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Search notes..." oninput="searchNotes(this.value)">
+  </div>
+  <div class="toc-title">Chapters</div>
+  <a class="toc-link" href="#ch1">1. Introduction to IoT</a>
+  <a class="toc-link" href="#ch2">2. Things and Sensors</a>
+  <a class="toc-link" href="#ch3">3. TCP/IP &amp; HTTP REST</a>
+  <a class="toc-link" href="#ch4">4. MQTT</a>
+  <a class="toc-link" href="#ch5">5. Data Visualization</a>
+  <a class="toc-link" href="#ch6">6. Architecture &amp; Design</a>
+  <a class="toc-link" href="#ch7">7. LoRaWAN</a>
+  <a class="toc-link" href="#ch8">8. Thread</a>
+  <a class="toc-link" href="#ch9">9. Matter</a>
+</nav>
+
+<main class="main" id="main-content">
+
+  <!-- ==================== CHAPTER 1 ==================== -->
+  <section class="chapter" id="ch1">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">1</span>
+      <span class="chapter-title">Introduction to IoT</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>What is IoT?</h3>
+      <p>The <strong>Internet of Things (IoT)</strong> is a global network of physical objects ("things") connected to the internet that can collect, send, and receive data. Everyday items like toothbrushes, cars, and refrigerators can be made "smart" by embedding sensors and network connectivity into them.</p>
+      <blockquote>Computing chips got small and cheap enough to put inside ordinary objects. This created an entire industry around connecting everyday things to the internet.</blockquote>
+
+      <h3>Three Core Elements of IoT</h3>
+      <table>
+        <tr><th>Element</th><th>What it does</th><th>Example</th></tr>
+        <tr><td><strong>Things</strong></td><td>Physical objects with sensors that gather, send, and receive data</td><td>Smart refrigerator, temperature sensor in a factory</td></tr>
+        <tr><td><strong>Connectivity</strong></td><td>Network technologies that let devices communicate</td><td>Fleet of delivery trucks using GPS to transmit location data</td></tr>
+        <tr><td><strong>Sense-making</strong></td><td>Processing raw data into meaningful insights for decisions</td><td>Factory sensors predicting machine failure</td></tr>
+      </table>
+      <blockquote>IoT data is often <strong>time-series data</strong> (data points paired with timestamps).</blockquote>
+
+      <h3>IoT Applications</h3>
+      <ul>
+        <li><strong>Connected cars</strong>: Dashcams, fuel monitoring, accident alerts, breakdown prediction</li>
+        <li><strong>Connected homes</strong>: Smart plugs monitoring electricity, smart thermostats, lost-item finding</li>
+        <li><strong>Smart cities</strong>: Air quality monitoring, smart street lighting, parking management</li>
+        <li><strong>Smart buildings</strong>: Energy reduction, lower maintenance costs, workspace efficiency</li>
+        <li><strong>Industrial IoT</strong>: Predictive maintenance, wearable safety devices, supply chain tracking</li>
+      </ul>
+
+      <h3>Benefits of IoT</h3>
+      <ol>
+        <li><strong>Improved quality of life</strong> &mdash; Automates daily tasks (coffee machine starts when alarm goes off)</li>
+        <li><strong>Boost innovation</strong> &mdash; Advanced analytics reveal new business opportunities</li>
+        <li><strong>Data-driven insights</strong> &mdash; Predict future outcomes from historical data</li>
+        <li><strong>Enhanced security</strong> &mdash; Continuous automated monitoring</li>
+        <li><strong>Customer satisfaction</strong> &mdash; Faster restocking, better services</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 2 ==================== -->
+  <section class="chapter" id="ch2">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">2</span>
+      <span class="chapter-title">Things and Sensors</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>What Makes a "Thing" Smart?</h3>
+      <p>A "thing" needs to be augmented with an <strong>embedded device</strong> that provides four capabilities:</p>
+      <table>
+        <tr><th>Capability</th><th>What it does</th><th>Smart Thermostat Example</th></tr>
+        <tr><td><strong>Sensing</strong></td><td>Detects physical quantities</td><td>Measures temperature, humidity, light, motion</td></tr>
+        <tr><td><strong>Control</strong></td><td>Allows remote operation</td><td>User adjusts temperature from phone app</td></tr>
+        <tr><td><strong>Computation</strong></td><td>Processes data locally</td><td>Learns user patterns, auto-adjusts settings</td></tr>
+        <tr><td><strong>Networking</strong></td><td>Communicates over a network</td><td>Connects via Wi-Fi to send/receive commands</td></tr>
+      </table>
+      <blockquote><strong>Thing = Physical Object + Embedded Device monitoring it</strong></blockquote>
+      <blockquote><strong>Internet of Things</strong> vs <strong>Intranet of Things</strong>: If devices only talk to each other without using the internet, it's an <em>Intranet</em> of Things.</blockquote>
+
+      <h3>Sensor Types</h3>
+      <p>A <strong>sensor</strong> converts a physical quantity (like temperature) into an electrical quantity (like voltage).</p>
+      <table>
+        <tr><th>Sensor Type</th><th>What it measures</th><th>Examples</th></tr>
+        <tr><td><strong>Environmental</strong></td><td>Temperature, humidity, air quality</td><td>Temperature sensor, light sensor</td></tr>
+        <tr><td><strong>Position</strong></td><td>Position, distance, orientation</td><td>GPS, accelerometer, gyroscope</td></tr>
+        <tr><td><strong>Vision</strong></td><td>Images and video</td><td>Camera, LIDAR, infrared sensor</td></tr>
+        <tr><td><strong>Chemical</strong></td><td>Chemical substances</td><td>Gas sensor, biosensor</td></tr>
+        <tr><td><strong>Acoustic</strong></td><td>Sound and vibrations</td><td>Microphone, piezoelectric sensor</td></tr>
+      </table>
+
+      <h3>Sensor Selection Process</h3>
+      <h4>Step 1 &mdash; Identify required sensing modalities</h4>
+      <ul>
+        <li>What context do you need? (e.g., "Is someone in the room?")</li>
+        <li>What sensor can detect that? (e.g., motion sensor for presence)</li>
+        <li>Where should it be deployed? (e.g., door sensor on the door)</li>
+      </ul>
+      <h4>Step 2 &mdash; Choose the best sensor</h4>
+      <ul>
+        <li>Check specifications (range, accuracy)</li>
+        <li>Decide: <strong>periodic</strong> readings (every X seconds) vs <strong>event-driven</strong> (only when something happens)</li>
+      </ul>
+      <h4>Step 3 &mdash; Other considerations</h4>
+      <ul>
+        <li>Power source (battery vs mains)</li>
+        <li>Size, weight, weather resistance</li>
+        <li>Budget, compliance, interoperability, maintenance</li>
+      </ul>
+
+      <h3>Beacons</h3>
+      <p>A <strong>beacon</strong> is a low-cost, low-powered device that <strong>periodically emits a signal</strong> (radio, audio, or light). Most common protocol: <strong>Bluetooth Low Energy (BLE)</strong>.</p>
+      <h4>Key beacon uses</h4>
+      <ul>
+        <li><strong>Geofencing</strong>: Define a virtual region; detect when devices enter/exit</li>
+        <li><strong>Ranging/Proximity</strong>: Determine approximate distance</li>
+        <li><strong>Indoor location</strong>: Useful where GPS doesn't work well (malls, airports)</li>
+      </ul>
+      <h4>Beacon configurations</h4>
+      <table>
+        <tr><th>Beacons</th><th>Receivers</th><th>Use Case</th></tr>
+        <tr><td>Fixed</td><td>Mobile</td><td>Retail store offers to passing customers</td></tr>
+        <tr><td>Mobile</td><td>Fixed</td><td>Warehouse inventory tracking</td></tr>
+        <tr><td>Mobile</td><td>Mobile</td><td>Conference networking, contact tracing</td></tr>
+        <tr><td>Fixed</td><td>Fixed</td><td>Theft prevention (alert if distance changes)</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 3 ==================== -->
+  <section class="chapter" id="ch3">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">3</span>
+      <span class="chapter-title">Connectivity &mdash; TCP/IP &amp; HTTP REST</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>TCP/IP Model (5 Layers)</h3>
+      <p>The TCP/IP model describes how data travels between computers. Think of it as a <strong>stack of layers</strong>, each with a specific job:</p>
+      <table>
+        <tr><th>Layer</th><th>Responsibility</th><th>Example Protocols</th></tr>
+        <tr><td><strong>Application</strong></td><td>Services for apps (web, email)</td><td>HTTP, DNS, MQTT</td></tr>
+        <tr><td><strong>Transport</strong></td><td>Delivers data to correct processes</td><td>TCP, UDP, QUIC</td></tr>
+        <tr><td><strong>Network</strong></td><td>Assigns addresses, routes across networks</td><td>IP (Internet Protocol)</td></tr>
+        <tr><td><strong>Link</strong></td><td>Reliable transfer across one single link</td><td>Wi-Fi, Ethernet</td></tr>
+        <tr><td><strong>Physical</strong></td><td>Raw signal transmission</td><td>Radio waves, cables</td></tr>
+      </table>
+      <h4>Key rules</h4>
+      <ul>
+        <li>Each layer can <strong>only</strong> talk to the layer directly above and below it</li>
+        <li>Applications don't need to care about which link technology is used</li>
+        <li><strong>Packetization</strong>: Data is split into small <strong>packets</strong>, each with <strong>headers</strong> (metadata) and <strong>payload</strong> (actual content)</li>
+        <li><strong>IP-based</strong>: Any device using IP can communicate with other IP-based devices</li>
+      </ul>
+
+      <h3>HTTP REST</h3>
+      <p><strong>HTTP</strong> is an application-layer protocol for transferring data. It is <strong>stateless</strong>: each request is independent.</p>
+      <p><strong>REST</strong> is an architectural style using HTTP methods:</p>
+      <table>
+        <tr><th>Method</th><th>Purpose</th><th>Example</th></tr>
+        <tr><td><strong>GET</strong></td><td>Retrieve data</td><td>Get temperature reading</td></tr>
+        <tr><td><strong>POST</strong></td><td>Create new data</td><td>Register a new sensor</td></tr>
+        <tr><td><strong>PUT</strong></td><td>Update existing data</td><td>Update device settings</td></tr>
+        <tr><td><strong>DELETE</strong></td><td>Remove data</td><td>Remove a device</td></tr>
+      </table>
+      <h4>HTTP Interaction Flow</h4>
+      <ol>
+        <li>Client sends request (method + URL + data)</li>
+        <li>Server processes request</li>
+        <li>Server sends response (status code + data)</li>
+        <li>Client processes response</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 4 ==================== -->
+  <section class="chapter" id="ch4">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">4</span>
+      <span class="chapter-title">Connectivity &mdash; MQTT</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>What is MQTT?</h3>
+      <p><strong>MQTT</strong> is a lightweight, <strong>publish-subscribe</strong> messaging protocol designed for constrained devices on unreliable networks. Perfect for IoT.</p>
+      <ul>
+        <li>Application-layer protocol, runs on top of <strong>TCP</strong></li>
+        <li>Small headers, compact binary format = minimal network usage</li>
+        <li>Maintains persistent connections = less power needed</li>
+        <li><strong>MQTT is NOT an acronym</strong> anymore</li>
+      </ul>
+
+      <h3>Publish/Subscribe Pattern (Pub/Sub)</h3>
+      <p>Unlike client-server, pub/sub uses a <strong>broker</strong> as a middleman:</p>
+      <pre><code>Publisher ---&gt; BROKER ---&gt; Subscriber 1
+                      ---&gt; Subscriber 2
+                      ---&gt; Subscriber 3</code></pre>
+      <h4>Three types of decoupling</h4>
+      <ol>
+        <li><strong>Space decoupling</strong>: Publisher and subscriber don't need to know each other's IP/port</li>
+        <li><strong>Time decoupling</strong>: They don't need to be online at the same time</li>
+        <li><strong>Synchronization decoupling</strong>: Publisher doesn't wait for subscriber to receive</li>
+      </ol>
+
+      <h3>Roles</h3>
+      <h4>MQTT Client</h4>
+      <ul>
+        <li>Any device running an MQTT library connected to a broker</li>
+        <li>Can be a publisher, subscriber, or both</li>
+      </ul>
+      <h4>MQTT Broker</h4>
+      <ul>
+        <li>Central hub managing all messages</li>
+        <li>Receives, filters, and distributes messages to subscribers</li>
+        <li>Handles authentication, authorization, session data</li>
+        <li><strong>Single point of failure</strong> &mdash; must be highly scalable and failure-resistant</li>
+      </ul>
+
+      <h3>Operations</h3>
+      <table>
+        <tr><th>Operation</th><th>What happens</th></tr>
+        <tr><td><strong>Connect</strong></td><td>Client sends CONNECT, broker responds with CONNACK + status</td></tr>
+        <tr><td><strong>Publish</strong></td><td>Client sends a message with a topic; broker forwards to subscribers</td></tr>
+        <tr><td><strong>Subscribe</strong></td><td>Client sends SUBSCRIBE for topics; broker confirms with SUBACK</td></tr>
+        <tr><td><strong>Unsubscribe</strong></td><td>Client sends UNSUBSCRIBE; broker confirms with UNSUBACK</td></tr>
+        <tr><td><strong>Disconnect</strong></td><td>Either side sends disconnect message</td></tr>
+      </table>
+      <h4>Key points</h4>
+      <ul>
+        <li>Each MQTT client has a unique <strong>Client ID</strong></li>
+        <li>Messages are <strong>data-agnostic</strong> (binary, text, XML, JSON &mdash; anything)</li>
+        <li>New subscribers <strong>don't get past messages</strong> unless Retained Messages are enabled</li>
+        <li>Publishers can set a <strong>message expiry interval</strong></li>
+      </ul>
+
+      <h3>MQTT Topics</h3>
+      <p>Topics are <strong>strings</strong> used by the broker to filter messages. They have a <strong>hierarchical structure</strong> separated by <code>/</code>:</p>
+      <pre><code>campus/soss/level3/room321
+campus/soss/level4/room482
+campus/lkcsb/level2/room213</code></pre>
+      <p><strong>No need to pre-create topics</strong> &mdash; the broker accepts any valid topic.</p>
+
+      <h3>Wildcards (Subscribe only)</h3>
+      <table>
+        <tr><th>Wildcard</th><th>Symbol</th><th>What it does</th><th>Example</th></tr>
+        <tr><td><strong>Single-level</strong></td><td><code>+</code></td><td>Matches one level</td><td><code>campus/soss/+/lift_lobby/light</code></td></tr>
+        <tr><td><strong>Multi-level</strong></td><td><code>#</code></td><td>Matches all remaining levels (must be last)</td><td><code>campus/soss/#</code></td></tr>
+      </table>
+      <blockquote>Wildcards can <strong>only</strong> be used for subscribing, <strong>NOT</strong> for publishing.</blockquote>
+
+      <h3>Topics Best Practices</h3>
+      <ul>
+        <li><strong>No leading <code>/</code></strong> (creates unnecessary blank level)</li>
+        <li><strong>No spaces</strong> (causes bugs)</li>
+        <li><strong>Keep topics short</strong> (included in every message)</li>
+        <li><strong>Use only ASCII characters</strong></li>
+        <li><strong>Embed Client ID</strong> in topic for authorization</li>
+        <li><strong>Don't subscribe to <code>#</code></strong> (receives ALL messages &mdash; bandwidth killer)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 5 ==================== -->
+  <section class="chapter" id="ch5">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">5</span>
+      <span class="chapter-title">Data Visualization</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>Why Visualize?</h3>
+      <p>Converts complex data into graphical form so people can understand, compare, and make decisions faster.</p>
+
+      <h3>Data Characteristics</h3>
+      <table>
+        <tr><th>Type</th><th>Description</th><th>Best Visualization</th></tr>
+        <tr><td><strong>Categorical</strong></td><td>Grouped into categories</td><td>Pie charts</td></tr>
+        <tr><td><strong>Ordinal</strong></td><td>Follows a specific sequence</td><td>Bar/column charts</td></tr>
+        <tr><td><strong>Continuous</strong></td><td>Spans over time</td><td>Line/progression charts</td></tr>
+      </table>
+
+      <h3>Visualization Types</h3>
+      <table>
+        <tr><th>Visualization</th><th>When to Use</th><th>IoT Example</th></tr>
+        <tr><td><strong>Time series</strong></td><td>Data changing over time (x=time, y=value)</td><td>Temperature readings over a month</td></tr>
+        <tr><td><strong>Alert list</strong></td><td>Track significant alerts and their status</td><td>Smoke detection alerts</td></tr>
+        <tr><td><strong>Bar chart</strong></td><td>Compare values across categories</td><td>Average temp across different days</td></tr>
+        <tr><td><strong>Bar gauge</strong></td><td>Show a metric within a range (like a thermometer)</td><td>Room occupancy levels</td></tr>
+        <tr><td><strong>Gauge</strong></td><td>Quick view of a single value within min/max</td><td>Vehicle speed</td></tr>
+        <tr><td><strong>Geomap</strong></td><td>Location-based data on a map</td><td>Delivery truck tracking</td></tr>
+        <tr><td><strong>Histogram</strong></td><td>Distribution of values in buckets</td><td>Temperature reading distribution</td></tr>
+        <tr><td><strong>Heatmap</strong></td><td>Histograms over time (trend patterns)</td><td>Electricity usage by hour and season</td></tr>
+        <tr><td><strong>Pie chart</strong></td><td>Parts of a whole (proportions)</td><td>Energy consumption by appliance</td></tr>
+        <tr><td><strong>Stat</strong></td><td>Single key metric at a glance</td><td>Current temperature reading</td></tr>
+        <tr><td><strong>State timeline</strong></td><td>How states change over time (duration bars)</td><td>Machine states: idle/running/overheated</td></tr>
+        <tr><td><strong>Status history</strong></td><td>Periodic states over time (discrete boxes)</td><td>Like state timeline but doesn't merge consecutive values</td></tr>
+        <tr><td><strong>Table</strong></td><td>Structured data with flexibility</td><td>Sensor readings with timestamps and comments</td></tr>
+      </table>
+
+      <h3>Alert Fatigue</h3>
+      <p>When too many alerts overwhelm people, causing them to <strong>miss, ignore, or delay</strong> responses.</p>
+      <h4>How to combat it</h4>
+      <ul>
+        <li>Set <strong>intelligent thresholds</strong> (not every alert needs immediate attention)</li>
+        <li>Find the right <strong>balance</strong> (too few = missed incidents; too many = alert fatigue)</li>
+        <li><strong>Tiered priorities</strong> (red lights + voice for warnings; amber text for advisories)</li>
+        <li>Make alerts <strong>actionable</strong> (clear instructions on what to do)</li>
+      </ul>
+
+      <h3>Design Principles (Material Design)</h3>
+      <ul>
+        <li><strong>Accurate</strong>: No distortion of data</li>
+        <li><strong>Helpful</strong>: Provide context and useful insights</li>
+        <li><strong>Scalable</strong>: Work across different screen sizes</li>
+      </ul>
+      <h4>Chart categories by purpose</h4>
+      <ul>
+        <li><strong>Change over time</strong>: Trends and temporal comparisons</li>
+        <li><strong>Category comparison</strong>: Compare between distinct groups</li>
+        <li><strong>Ranking</strong>: Show items in ordered position</li>
+        <li><strong>Part-to-whole</strong>: Show how parts sum to a total</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 6 ==================== -->
+  <section class="chapter" id="ch6">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">6</span>
+      <span class="chapter-title">IoT Architecture &amp; Design</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>General Principles</h3>
+      <table>
+        <tr><th>Principle</th><th>What it means</th><th>Why it matters</th></tr>
+        <tr><td><strong>Decouple ingestion from processing</strong></td><td>Separate data collection from data processing</td><td>Scale processing independently based on load</td></tr>
+        <tr><td><strong>Design for offline behavior</strong></td><td>Devices may go offline for long periods</td><td>Must be delay-tolerant; monitor for silent devices</td></tr>
+        <tr><td><strong>Lean data at edge, enrich in cloud</strong></td><td>Store compact data on device, add detail in cloud</td><td>Saves device storage and transmission energy</td></tr>
+        <tr><td><strong>Handle personalization</strong></td><td>Each deployment site has unique settings</td><td>Need UI or phone app for device setup</td></tr>
+        <tr><td><strong>Regular status checks (heartbeats)</strong></td><td>Devices should regularly report they're alive</td><td>Detect offline devices and take action</td></tr>
+        <tr><td><strong>Security at all layers</strong></td><td>Physical nature of IoT creates unique vulnerabilities</td><td>e.g., NFC relay attacks on cars</td></tr>
+      </table>
+
+      <h3>Operational Excellence</h3>
+      <ul>
+        <li><strong>Plan device provisioning</strong>: Create device identities securely, assign unique certificates</li>
+        <li><strong>Device bootstrapping</strong>: Devices must connect and update config during setup; bootstrapping server must support all firmware versions ever deployed</li>
+        <li><strong>Document communication patterns</strong>: After deploying a few devices, extrapolate total expected traffic</li>
+        <li><strong>Over-the-Air (OTA) updates</strong>: Continuously update firmware, track success/failure, allow rollback</li>
+        <li><strong>Functional testing on physical assets</strong>: Rigorous testing before field deployment</li>
+        <li><strong>Design for operations at scale</strong>: Plan logging, monitoring, fleet management</li>
+      </ul>
+
+      <h3>Security Principles</h3>
+      <ul>
+        <li><strong>Manage security lifecycle holistically</strong>: From design phase to hardware retirement/destruction</li>
+        <li><strong>Least privilege permissions</strong>: Restrict which topics each device can use; compromised device = limited damage</li>
+        <li><strong>Zero Trust</strong>: Never automatically trust anything; verify everything before granting access</li>
+      </ul>
+
+      <h3>Reliability Principles</h3>
+      <ul>
+        <li><strong>Simulate at production scale</strong>: Test at 10% &rarr; 25% &rarr; 50% &rarr; 100% traffic</li>
+        <li><strong>Buffer with queues</strong>: Incoming rate may exceed processing rate; queues prevent data loss</li>
+        <li><strong>Design for failure</strong>: Retry logic, firmware rollback, protocol failover, redundant sensors, factory reset</li>
+      </ul>
+
+      <h3>Performance Efficiency</h3>
+      <ul>
+        <li>Use <strong>managed services</strong> (databases, compute, storage)</li>
+        <li><strong>Decouple ingestion and processing</strong> for scalable data handling</li>
+        <li>Use <strong>event-driven architectures</strong></li>
+      </ul>
+
+      <h3>Cost Optimization</h3>
+      <ul>
+        <li><strong>Manage manufacturing tradeoffs</strong>: Cheapest vendor may cost more long-term</li>
+        <li><strong>Avoid unnecessary data</strong>: Stop collecting unused data; adjust granularity and retention</li>
+        <li><strong>Process at the edge</strong>: Upload only relevant insights to the cloud</li>
+      </ul>
+
+      <h3>Design Patterns</h3>
+
+      <h4>Command Pattern</h4>
+      <p><em>Problem:</em> How to reliably ask devices to perform actions across unreliable networks?</p>
+      <p><em>Solution:</em> <strong>No action is deemed successful unless acknowledged as successful.</strong></p>
+      <ol>
+        <li>Device configures itself to communicate via a protocol endpoint</li>
+        <li>A component publishes a Command message to the device</li>
+        <li>Server sends the Command to the device</li>
+        <li>Device performs the action and publishes a <strong>completion message</strong></li>
+      </ol>
+
+      <h4>Device Bootstrap Pattern</h4>
+      <p><em>Problem:</em> A new device starts with zero privileges and needs to become fully operational.</p>
+      <p><em>Solution:</em> Two-phase approach:</p>
+      <ol>
+        <li><strong>Registration Authority</strong>: Device registers with shared credentials/token &rarr; gets validated &rarr; receives <strong>short-lived credentials</strong></li>
+        <li><strong>Privilege Escalator</strong>: Device shares more info &rarr; if authorized, receives <strong>long-lived credentials</strong> (certificates)</li>
+        <li>Device can now subscribe/publish to its messaging topics</li>
+      </ol>
+
+      <h4>Device State Replica Pattern</h4>
+      <p><em>Problem:</em> Need to track and sync device states even with intermittent connectivity.</p>
+      <p><em>Solution:</em> Maintain three things:</p>
+      <ul>
+        <li><strong>Current state</strong>: What the device reports</li>
+        <li><strong>Desired state</strong>: What the system wants</li>
+        <li><strong>Delta</strong>: The difference between current and desired</li>
+      </ul>
+      <p><strong>Component-to-Device flow</strong> (system wants to change device):</p>
+      <ol>
+        <li>Device reports initial state to <code>state/deviceID/update</code></li>
+        <li>Replica stores it</li>
+        <li>Device subscribes to <code>state/deviceID/update/delta</code></li>
+        <li>Component publishes desired state</li>
+        <li>Replica sends delta to device</li>
+        <li>Device performs changes</li>
+        <li>Device reports new state</li>
+      </ol>
+      <p><strong>Device-to-Component flow</strong> (device changes its own state):</p>
+      <ol>
+        <li>Device reports initial state</li>
+        <li>Component subscribes to delta topic</li>
+        <li>Device detects state change, reports new state</li>
+        <li>Replica records and publishes delta</li>
+        <li>Component receives the change</li>
+      </ol>
+
+      <h4>Gateway Pattern</h4>
+      <p><em>Problem:</em> Some IoT devices don't have direct internet access.</p>
+      <p><em>Solution:</em> A gateway relays messages between devices and the cloud server.</p>
+      <ul>
+        <li><strong>Up gateway</strong>: Device &rarr; Gateway &rarr; Server (same topic, mirrored upward)</li>
+        <li><strong>Down gateway</strong>: Server &rarr; Gateway &rarr; Device (same topic, mirrored downward)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 7 ==================== -->
+  <section class="chapter" id="ch7">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">7</span>
+      <span class="chapter-title">Connectivity &mdash; LoRaWAN</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>Radio Frequency Basics</h3>
+      <ul>
+        <li><strong>Operating frequency</strong>: Two devices must use the same radio frequency to communicate</li>
+        <li><strong>Signal bandwidth</strong>: Difference between max and min frequencies (Hz). NOT the same as data rate.</li>
+      </ul>
+      <h4>Key relationships</h4>
+      <ul>
+        <li><strong>Higher bandwidth &rarr; Higher data rate</strong> (wider road = more cars)</li>
+        <li><strong>Higher frequency &rarr; Lower range</strong> (shorter wavelengths = more susceptible to obstacles)</li>
+      </ul>
+
+      <h3>LoRa (Physical Layer)</h3>
+      <p><strong>LoRa</strong> = Long Range. A physical layer modulation technique using <strong>Chirp Spread Spectrum</strong> technology.</p>
+      <ul>
+        <li>A <strong>chirp</strong> = a signal where frequency changes over time</li>
+        <li><strong>Up-chirp</strong>: frequency increases. <strong>Down-chirp</strong>: frequency decreases.</li>
+      </ul>
+      <p><strong>Spreading Factor</strong>: How fast the frequency changes</p>
+      <ul>
+        <li><strong>High SF</strong>: Frequency changes slowly &rarr; longer range, lower data rate</li>
+        <li><strong>Low SF</strong>: Frequency changes quickly &rarr; shorter range, higher data rate</li>
+      </ul>
+
+      <h3>Duty Cycles</h3>
+      <ul>
+        <li><strong>Airtime</strong>: How long a device spends transmitting</li>
+        <li><strong>Duty cycle</strong>: Fraction of time a device transmits (e.g., transmit 1s every 100s = 1%)</li>
+        <li><strong>Governments regulate duty cycles</strong> to reduce interference. Typically <strong>1%</strong> for LoRa.</li>
+      </ul>
+
+      <h3>LoRaWAN (Network Protocol)</h3>
+      <p>LoRaWAN sits on top of LoRa. It's a <strong>Low Power, Wide Area</strong> networking protocol.</p>
+      <table>
+        <tr><th>Spec</th><th>Value</th></tr>
+        <tr><td>Frequency</td><td><strong>Sub-GHz</strong>: 433 MHz, 868 MHz, 920 MHz</td></tr>
+        <tr><td>Data rate</td><td>Up to <strong>50 kbps</strong></td></tr>
+        <tr><td>Max payload</td><td><strong>~200 bytes</strong> (as low as 11 bytes in some regions)</td></tr>
+        <tr><td>Encryption</td><td>128-bit <strong>Network Session Key</strong> + 128-bit <strong>Application Session Key</strong></td></tr>
+      </table>
+      <p><strong>Adaptive Data Rate</strong>: Network server optimizes spreading factor, bandwidth, and power per device.</p>
+
+      <h3>LoRaWAN Topology: Star-of-Stars</h3>
+      <pre><code>End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server
+End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre>
+      <ul>
+        <li>Gateways relay between end-devices and the central network server</li>
+        <li>Single-hop from end-device to gateway (or double-hop with relay)</li>
+      </ul>
+
+      <h3>LoRaWAN Network Components</h3>
+      <table>
+        <tr><th>Component</th><th>Role</th></tr>
+        <tr><td><strong>End-Device</strong></td><td>Sensor/actuator wirelessly connected to LoRaWAN</td></tr>
+        <tr><td><strong>Radio Gateway</strong></td><td>Forwards all received packets to Network Server (doesn't process them)</td></tr>
+        <tr><td><strong>Network Server</strong></td><td>Handles MAC layer, data rate adaptation, routing, deduplication</td></tr>
+        <tr><td><strong>Join Server</strong></td><td>Manages Over-the-Air device activation</td></tr>
+        <tr><td><strong>Application Server</strong></td><td>Handles application-layer data, provides service to end-users</td></tr>
+      </table>
+
+      <h3>Message Types</h3>
+      <ul>
+        <li><strong>Uplink</strong>: End-Device &rarr; ALL gateways in range &rarr; Network Server. Deduplicated at Network Server.</li>
+        <li><strong>Downlink</strong>: Network Server &rarr; ONE Gateway &rarr; End-Device. Buffered if device isn't ready.</li>
+      </ul>
+
+      <h3>LoRaWAN Operating Classes</h3>
+      <table>
+        <tr><th>Class</th><th>Latency</th><th>Power</th><th>How it works</th></tr>
+        <tr><td><strong>Class A</strong> (default)</td><td>Highest</td><td>Lowest</td><td>Device sends whenever; opens 2 short receive windows after each uplink. Server can only send AFTER device sends.</td></tr>
+        <tr><td><strong>Class B</strong> (beaconing)</td><td>Medium</td><td>Medium</td><td>Like Class A + predictable <strong>ping slots</strong>. Beacons every 128s for time sync.</td></tr>
+        <tr><td><strong>Class C</strong> (continuous)</td><td>Lowest</td><td>Highest</td><td>Receive window always open except when transmitting.</td></tr>
+      </table>
+
+      <h4>Class A detail</h4>
+      <ol>
+        <li>Device transmits</li>
+        <li>Waits ~1s, opens <strong>RX1</strong> window (frequency/data rate based on uplink)</li>
+        <li>Waits again, opens <strong>RX2</strong> window (fixed frequency, configurable)</li>
+      </ol>
+
+      <h4>Class B detail</h4>
+      <ul>
+        <li>Gateways broadcast <strong>beacons</strong> every 128 seconds for time sync</li>
+        <li>4096 <strong>ping slots</strong> between beacons</li>
+        <li>End-device wakes at predictable times to listen</li>
+      </ul>
+
+      <h4>Class C detail</h4>
+      <ul>
+        <li>Receive window continuously open, only closes during transmission</li>
+        <li>Best for devices with unlimited power</li>
+      </ul>
+
+      <h3>Activation Methods</h3>
+      <ul>
+        <li><strong>ABP (Activation-by-Personalization)</strong>: Device directly tied to a specific network. For known factory deployments.</li>
+        <li><strong>OTA (Over-the-Air)</strong>: Device performs Join procedure. For consumer devices bought off-the-shelf.</li>
+      </ul>
+
+      <h3>Relays</h3>
+      <p>Extend range when end-devices can't reach gateways directly. A relay is a LoRaWAN end-device that forwards frames using <strong>Wake On Radio (WOR)</strong>.</p>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 8 ==================== -->
+  <section class="chapter" id="ch8">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">8</span>
+      <span class="chapter-title">Connectivity &mdash; Thread</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>What is Thread?</h3>
+      <p>An <strong>open standard</strong> for reliable, low-power, <strong>wireless mesh networking</strong>. Designed for IP-based networking where every device gets an IP address.</p>
+      <ul>
+        <li><strong>Self-configuring and self-healing</strong></li>
+        <li><strong>Secure</strong> (all communications encrypted, devices authorized)</li>
+        <li><strong>Scalable</strong> (hundreds of devices per mesh)</li>
+        <li><strong>Resilient</strong> (no single point of failure by design)</li>
+        <li><strong>Efficient</strong> (long battery life with duty cycling)</li>
+      </ul>
+
+      <h3>Node Roles</h3>
+      <table>
+        <tr><th>Role</th><th>Description</th></tr>
+        <tr><td><strong>Router</strong></td><td>Forwards packets, provides joining/security services, radio always on</td></tr>
+        <tr><td><strong>End Device</strong></td><td>Communicates with a single Router (Parent), doesn't forward packets, can sleep</td></tr>
+      </table>
+      <blockquote><strong>Parent-Child relationship</strong>: End Device attaches to exactly one Router. Router = Parent, End Device = Child.</blockquote>
+
+      <h3>Device Types</h3>
+      <h4>Full Thread Device (FTD)</h4>
+      <p>Radio always on, maintains routing table, subscribes to all-routers multicast.</p>
+      <table>
+        <tr><th>Type</th><th>Description</th></tr>
+        <tr><td><strong>Router</strong></td><td>Actively routes/forwards messages, never sleeps</td></tr>
+        <tr><td><strong>REED</strong></td><td>Router-Eligible End Device. Can become a Router when needed. Network auto-manages promotion.</td></tr>
+        <tr><td><strong>Full End Device</strong></td><td>End device that can never be a router</td></tr>
+      </table>
+
+      <h4>Minimal Thread Device (MTD)</h4>
+      <p>May not be always on. No routing table, no all-routers multicast. Always sends data to parent router.</p>
+      <table>
+        <tr><th>Type</th><th>Description</th></tr>
+        <tr><td><strong>Minimal End Device</strong></td><td>Radio always on, but no routing overhead</td></tr>
+        <tr><td><strong>Sleepy End Device (SED)</strong></td><td>Radio off during idle, wakes periodically to poll parent</td></tr>
+      </table>
+
+      <h3>Upgrading/Downgrading</h3>
+      <ul>
+        <li><strong>REED &rarr; Router</strong>: When it's the only node in range of a new End Device wanting to join</li>
+        <li><strong>Router &rarr; End Device</strong>: When a router has no children</li>
+      </ul>
+
+      <h3>Special Roles</h3>
+      <table>
+        <tr><th>Role</th><th>Description</th></tr>
+        <tr><td><strong>Thread Leader</strong></td><td>A Router that manages all Routers; dynamically elected; one per partition</td></tr>
+        <tr><td><strong>Border Router</strong></td><td>Forwards between Thread and non-Thread network (e.g., Wi-Fi); provides IPv6 connectivity</td></tr>
+      </table>
+
+      <h3>Partitions</h3>
+      <ul>
+        <li>A Thread network may split into <strong>partitions</strong> (groups that can't reach each other)</li>
+        <li>Each partition has its own Leader</li>
+        <li>Partitions <strong>automatically merge</strong> when connectivity is restored</li>
+        <li>All partitions share the same security credentials</li>
+      </ul>
+
+      <h3>Device Limits</h3>
+      <table>
+        <tr><th>Type</th><th>Limit</th></tr>
+        <tr><td>Leader</td><td>1 per partition</td></tr>
+        <tr><td>Routers</td><td>Max 32 (target: 16&ndash;23)</td></tr>
+        <tr><td>End Devices</td><td>511 per router</td></tr>
+      </table>
+      <p>If router count &lt; 16, REEDs auto-promote to Router.</p>
+
+      <h3>Resilience (No Single Point of Failure)</h3>
+      <ul>
+        <li>If a SED's parent Router fails, it selects another Router</li>
+        <li>If a Leader fails, another Router becomes Leader</li>
+        <li>Border Router failure = no backup ONLY if there's just one Border Router</li>
+      </ul>
+
+      <h3>IPv6 Addressing</h3>
+      <h4>Three scopes</h4>
+      <table>
+        <tr><th>Scope</th><th>Reach</th><th>Prefix</th></tr>
+        <tr><td><strong>Link-Local</strong></td><td>Single radio transmission</td><td><code>fe80::/16</code></td></tr>
+        <tr><td><strong>Mesh-Local</strong></td><td>Entire Thread network</td><td><code>fd00::/8</code></td></tr>
+        <tr><td><strong>Global</strong></td><td>Outside the Thread network</td><td>(varies)</td></tr>
+      </table>
+
+      <h4>Unicast address types</h4>
+      <ul>
+        <li><strong>Link-Local Address (LLA)</strong>: For discovering neighbors, configuring links</li>
+        <li><strong>Mesh-Local EID (ML-EID)</strong>: Identifies interface independent of topology; used by apps</li>
+        <li><strong>Routing Locator (RLOC)</strong>: Based on network topology; changes as topology changes; used by routing protocol</li>
+      </ul>
+
+      <h4>Multicast addresses</h4>
+      <table>
+        <tr><th>Address</th><th>Scope</th><th>Delivered to</th></tr>
+        <tr><td><code>ff02::1</code></td><td>Link-Local</td><td>All FTDs and MEDs</td></tr>
+        <tr><td><code>ff02::2</code></td><td>Link-Local</td><td>All FTDs</td></tr>
+        <tr><td><code>ff03::1</code></td><td>Mesh-Local</td><td>All FTDs and MEDs</td></tr>
+        <tr><td><code>ff03::2</code></td><td>Mesh-Local</td><td>All FTDs</td></tr>
+      </table>
+
+      <h3>Network Discovery and Formation</h3>
+      <h4>Network identifiers</h4>
+      <ul>
+        <li>2-byte PAN ID</li>
+        <li>8-byte Extended PAN ID (XPAN ID)</li>
+        <li>Human-readable Network Name</li>
+      </ul>
+      <h4>Active scan process</h4>
+      <ol>
+        <li>Device broadcasts Beacon Request on a channel</li>
+        <li>Routers/REEDs in range respond with Beacon (PAN ID, XPAN ID, Network Name)</li>
+        <li>Repeat for each channel</li>
+        <li>Either join existing network or create new one</li>
+      </ol>
+      <h4>Creating a new network</h4>
+      <ul>
+        <li>Select least busy channel + unused PAN ID</li>
+        <li>Become a Router, elect self as Leader</li>
+        <li>Broadcast MLE Advertisements</li>
+      </ul>
+      <h4>Joining an existing network (MLE Attach)</h4>
+      <ol>
+        <li>Child sends multicast Parent Request</li>
+        <li>Routers/REEDs send Parent Responses</li>
+        <li>Child picks a Parent, sends Child ID Request</li>
+        <li>Parent confirms with Child ID Response</li>
+      </ol>
+
+      <h3>Connected Dominating Set (CDS)</h3>
+      <p>Routers must form a CDS:</p>
+      <ul>
+        <li>Any Router can reach any other Router through <strong>Router-only paths</strong></li>
+        <li>Every End Device is directly connected to a Router</li>
+      </ul>
+      <p>Thread adds routers for: coverage, path diversity, redundancy, more children. Removes routers when: max 32 exceeded, or space needed elsewhere.</p>
+    </div>
+  </section>
+
+  <!-- ==================== CHAPTER 9 ==================== -->
+  <section class="chapter" id="ch9">
+    <div class="chapter-header" onclick="toggleChapter(this)">
+      <span class="chapter-num">9</span>
+      <span class="chapter-title">Connectivity &mdash; Matter</span>
+      <span class="chapter-collapse">&#9662;</span>
+    </div>
+    <div class="chapter-body">
+
+      <h3>What is Matter?</h3>
+      <p>An <strong>interoperable standard</strong> for smart home devices, aiming to replace proprietary protocols. Built on <strong>IPv6</strong>.</p>
+      <ul>
+        <li>Application-layer protocol in the TCP/IP model</li>
+        <li>Runs over <strong>Wi-Fi, Ethernet, and Thread</strong></li>
+        <li>Strong cryptography</li>
+        <li>Supports <strong>bridging</strong> other protocols (Zigbee, Bluetooth Mesh, Z-Wave)</li>
+        <li><strong>Multi-admin</strong>: Multiple administrators can control devices</li>
+        <li>BLE used for initial commissioning</li>
+      </ul>
+
+      <h3>Matter Network Topology</h3>
+      <ul>
+        <li>Composed of Ethernet, Wi-Fi, and Thread devices within a local <strong>fabric</strong></li>
+        <li>All communication over <strong>IPv6</strong></li>
+        <li>Central hubs (Thread Border Router, Wi-Fi AP) connect different networks</li>
+        <li>Can work without internet (within firewalled network)</li>
+      </ul>
+
+      <h3>Device Data Model (Hierarchical)</h3>
+      <pre><code>Device
+  &rarr; Node (unique identifiable resource)
+    &rarr; Endpoint (feature set)
+      &rarr; Cluster (specific functionality)
+        &rarr; Attributes (current states/values)
+        &rarr; Commands (actions to perform)
+        &rarr; Events (record of past state changes)</code></pre>
+
+      <h4>Key concepts</h4>
+      <table>
+        <tr><th>Concept</th><th>What it is</th><th>Example</th></tr>
+        <tr><td><strong>Node</strong></td><td>Unique addressable resource in a network</td><td>A phone app</td></tr>
+        <tr><td><strong>Endpoint</strong></td><td>A feature set on a Node</td><td>Lighting, motion detection</td></tr>
+        <tr><td><strong>Cluster</strong></td><td>Groups specific functionality</td><td>On/Off cluster, Level Control</td></tr>
+        <tr><td><strong>Attribute</strong></td><td>State/value of a node</td><td>Lock State = "locked"</td></tr>
+        <tr><td><strong>Command</strong></td><td>Action to perform</td><td>"Lock Door"</td></tr>
+        <tr><td><strong>Event</strong></td><td>Record of past transitions (with timestamps)</td><td>Door Lock Alarm</td></tr>
+      </table>
+      <blockquote><strong>Endpoint 0</strong> is reserved for <strong>Utility Clusters</strong> (discovery, diagnostics, OTA updates). Other endpoints have <strong>Application Clusters</strong>.</blockquote>
+
+      <h3>Node Roles</h3>
+      <table>
+        <tr><th>Role</th><th>Description</th></tr>
+        <tr><td><strong>Commissioner</strong></td><td>Performs commissioning (adding devices to network)</td></tr>
+        <tr><td><strong>Controller</strong></td><td>Controls other Nodes (e.g., Google Home app, Nest Hub)</td></tr>
+        <tr><td><strong>Controlee</strong></td><td>Can be controlled by other Nodes</td></tr>
+        <tr><td><strong>OTA Provider</strong></td><td>Provides software updates</td></tr>
+        <tr><td><strong>OTA Requestor</strong></td><td>Requests software updates</td></tr>
+      </table>
+
+      <h3>Device Types</h3>
+      <p>A <strong>Device Type</strong> is an officially defined collection of mandatory and optional Clusters. If a device implements a Device Type, it <strong>must</strong> implement all mandatory Clusters.</p>
+
+      <h3>Clients and Servers</h3>
+      <table>
+        <tr><th></th><th>Client Cluster</th><th>Server Cluster</th></tr>
+        <tr><td><strong>State</strong></td><td>Stateless</td><td>Stateful (holds Attributes, Events, Commands)</td></tr>
+        <tr><td><strong>Role</strong></td><td>Initiates interactions</td><td>Responds to interactions</td></tr>
+      </table>
+      <p>A Node can be BOTH client and server. Relationships are <strong>horizontal</strong> (not hierarchical between nodes).</p>
+
+      <h3>Descriptor Cluster</h3>
+      <ul>
+        <li>Provides <strong>introspection</strong>: lists all Server/Client Clusters, Device Types, and Parts</li>
+        <li>Required on every Device Type</li>
+        <li><strong>Root Device Type on Endpoint 0</strong>: Reading its Descriptor Cluster lets you traverse the full tree</li>
+      </ul>
+
+      <h3>Interaction Model</h3>
+      <p>Defines how Nodes communicate. The <strong>Initiator</strong> starts interactions, the <strong>Target</strong> responds.</p>
+      <p><strong>Hierarchy</strong>: Interaction &rarr; Transactions &rarr; Actions</p>
+
+      <h3>Groups and Paths</h3>
+      <ul>
+        <li><strong>Groups</strong>: Address multiple devices simultaneously using the same Group ID (IPv6 Multicast)</li>
+        <li><strong>Paths</strong>: Location of an Attribute/Event/Command in the hierarchy (e.g., <code>Endpoint1.DoorLock.LockType</code>)</li>
+        <li><strong>"Popcorn effect"</strong>: When sending individual commands to each device causes visible sequential delays. Groups solve this.</li>
+      </ul>
+
+      <h3>Transaction Types</h3>
+      <table>
+        <tr><th>Transaction</th><th>Purpose</th><th>Actions</th></tr>
+        <tr><td><strong>Read</strong></td><td>Get data from a target</td><td>Read Request &rarr; Report Data &rarr; Status Response</td></tr>
+        <tr><td><strong>Subscribe</strong></td><td>Get periodic updates</td><td>Subscribe Request &rarr; Subscribe Response &rarr; periodic Report Data</td></tr>
+        <tr><td><strong>Write</strong></td><td>Change an Attribute</td><td>Write Request &rarr; Write Response</td></tr>
+        <tr><td><strong>Invoke</strong></td><td>Execute a Command</td><td>Invoke Request &rarr; Invoke Response</td></tr>
+      </table>
+
+      <h3>Timed vs Untimed Transactions</h3>
+      <p><strong>Timed Transactions</strong> set a maximum timeout to prevent <strong>Intercept Attacks</strong>:</p>
+      <ol>
+        <li>Alice sends message to Bob</li>
+        <li>Eve intercepts it (e.g., radio jamming)</li>
+        <li>Eve collects a second message</li>
+        <li>Eve replays the first message to Bob</li>
+        <li>Eve holds the second for later replay (security breach: "open lock")</li>
+      </ol>
+      <p><strong>Solution</strong>: Timed transactions expire, so Eve's replayed message is rejected.</p>
+      <blockquote>Only use timed transactions for <strong>critical operations</strong> (locks, garage doors) &mdash; they add complexity.</blockquote>
+
+      <h3>Fabric</h3>
+      <ul>
+        <li>A <strong>Fabric</strong> = set of devices sharing the same security domain</li>
+        <li><strong>Commissioning</strong> = assigning Fabric credentials to a new Node</li>
+        <li><strong>Multi-Admin</strong> = Nodes can be on multiple Fabrics (e.g., manufacturer's + cloud ecosystem's)</li>
+        <li>Cluster Attributes/Events/Actions are <strong>shared between Fabrics</strong></li>
+      </ul>
+
+      <h3>Matter + Thread Integration</h3>
+      <ul>
+        <li>Matter uses IPv6 for all operational communications</li>
+        <li><strong>Thread Border Router</strong> bridges Thread and Wi-Fi/Ethernet networks</li>
+        <li>Border Router is a <strong>Stub Router</strong> (connects stub/last-mile network to regular network)</li>
+        <li>Responsibilities: auto-configure IPv6, publish multicast DNS for Thread Nodes, forward only relevant packets to Thread (avoid overloading low-bandwidth Thread)</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#9650;</button>
+
+<script>
+  // Toggle chapter collapse
+  function toggleChapter(header) {
+    header.parentElement.classList.toggle('collapsed');
+  }
+
+  // Sidebar toggle (mobile)
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+  }
+
+  // Close sidebar on link click (mobile)
+  document.querySelectorAll('.toc-link').forEach(link => {
+    link.addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('open');
+    });
+  });
+
+  // Highlight active TOC link on scroll
+  const chapters = document.querySelectorAll('.chapter');
+  const tocLinks = document.querySelectorAll('.toc-link');
+
+  function updateActiveToc() {
+    let current = '';
+    chapters.forEach(ch => {
+      const rect = ch.getBoundingClientRect();
+      if (rect.top <= 100) current = ch.id;
+    });
+    tocLinks.forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+    });
+  }
+
+  // Scroll-to-top visibility
+  function updateScrollTop() {
+    document.getElementById('scroll-top').classList.toggle('show', window.scrollY > 400);
+  }
+
+  window.addEventListener('scroll', () => {
+    updateActiveToc();
+    updateScrollTop();
+  });
+
+  // Search
+  function searchNotes(query) {
+    const main = document.getElementById('main-content');
+    // Remove existing highlights
+    main.querySelectorAll('mark').forEach(m => {
+      const parent = m.parentNode;
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize();
+    });
+
+    if (!query || query.length < 2) {
+      // Show all chapters
+      chapters.forEach(ch => ch.style.display = '');
+      return;
+    }
+
+    const lq = query.toLowerCase();
+
+    chapters.forEach(ch => {
+      const body = ch.querySelector('.chapter-body');
+      const text = body ? body.textContent.toLowerCase() : '';
+      const match = text.includes(lq);
+      ch.style.display = match ? '' : 'none';
+      if (match) {
+        ch.classList.remove('collapsed');
+        highlightText(body, query);
+      }
+    });
+  }
+
+  function highlightText(el, query) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    const lq = query.toLowerCase();
+    nodes.forEach(node => {
+      const idx = node.textContent.toLowerCase().indexOf(lq);
+      if (idx === -1) return;
+      const range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + query.length);
+      const mark = document.createElement('mark');
+      range.surroundContents(mark);
+    });
+  }
+
+  // Keyboard shortcut: Ctrl/Cmd + K to focus search
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('search').focus();
+    }
+  });
+</script>
+</body>
+</html>

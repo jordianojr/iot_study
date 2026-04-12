@@ -34,6 +34,25 @@
       color: #f8fafc;
     }
 
+    .topbar-links {
+      display: flex;
+      gap: 8px;
+    }
+
+    .topbar-links a {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #475569;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .topbar-links a:hover { border-color: #818cf8; color: #c7d2fe; }
+    .topbar-links a.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
     .controls {
       display: flex;
       gap: 8px;
@@ -262,7 +281,13 @@
 <body>
 
 <header>
-  <h1>CS462 IoT Flashcards</h1>
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+    <h1>CS462 IoT Flashcards</h1>
+    <div class="topbar-links">
+      <a href="index.html" class="active">Flashcards</a>
+      <a href="study-notes.html">Study Notes</a>
+    </div>
+  </div>
   <div class="controls" id="filters"></div>
 </header>
 

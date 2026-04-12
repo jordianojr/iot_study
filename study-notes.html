@@ -466,11 +466,26 @@
       <ul>
         <li>Power source (battery vs mains)</li>
         <li>Size, weight, weather resistance</li>
-        <li>Budget, compliance, interoperability, maintenance</li>
+        <li>Budget</li>
+        <li>Compliance to health, safety standards</li>
+        <li>Interoperability with existing systems</li>
+        <li>Delivery lead time</li>
+        <li>Ease of mounting and unmounting</li>
+        <li>Maintenance requirements</li>
+        <li>End users' perceptions</li>
+        <li>Customized vs Commercial Off The Shelf (COTS)</li>
+        <li>Product reviews</li>
       </ul>
 
       <h3>Beacons</h3>
-      <p>A <strong>beacon</strong> is a low-cost, low-powered device that <strong>periodically emits a signal</strong> (radio, audio, or light). Most common protocol: <strong>Bluetooth Low Energy (BLE)</strong>.</p>
+      <p>A <strong>beacon</strong> is a low-cost, low-powered device that <strong>periodically emits a signal</strong> (radio, audio, or light). Most common protocol: <strong>Bluetooth Low Energy (BLE)</strong>, but anything that emits a signal periodically could be a beacon (e.g., Wi-Fi beacons).</p>
+      <h4>How beacons work (RSSI)</h4>
+      <ol>
+        <li>Beacon transmits a BLE radio signal with its ID, at a periodic interval, at a fixed transmit power</li>
+        <li>A receiver within range using the same BLE protocol can decode the signal</li>
+        <li>The further the receiver is from the beacon, the smaller the <strong>Received Signal Strength Indicator (RSSI)</strong></li>
+        <li>A receiver out of beacon range will not receive the signal at all</li>
+      </ol>
       <h4>Key beacon uses</h4>
       <ul>
         <li><strong>Geofencing</strong>: Define a virtual region; detect when devices enter/exit</li>
@@ -484,6 +499,18 @@
         <tr><td>Mobile</td><td>Fixed</td><td>Warehouse inventory tracking</td></tr>
         <tr><td>Mobile</td><td>Mobile</td><td>Conference networking, contact tracing</td></tr>
         <tr><td>Fixed</td><td>Fixed</td><td>Theft prevention (alert if distance changes)</td></tr>
+      </table>
+
+      <h3>Asset Tracking Technology Comparison</h3>
+      <table>
+        <tr><th>Feature</th><th>QR Code</th><th>Barcode</th><th>RFID (Active)</th><th>RFID (Passive)</th><th>NFC</th><th>BLE</th><th>GPS</th></tr>
+        <tr><td><strong>Cost Effective</strong></td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+        <tr><td><strong>Real-time Tracking</strong></td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>At Intervals</td><td>Real-time</td></tr>
+        <tr><td><strong>Power Consumption</strong></td><td>N/A</td><td>N/A</td><td>High</td><td>Low</td><td>Low</td><td>Low</td><td>Unlimited</td></tr>
+        <tr><td><strong>Range</strong></td><td>High</td><td>Low</td><td>High</td><td>Low</td><td>Low</td><td>Low</td><td>Unlimited</td></tr>
+        <tr><td><strong>Continuous Scanning</strong></td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td><strong>Two-way Comms</strong></td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>Yes</td><td>No</td></tr>
+        <tr><td><strong>Labor Intensive</strong></td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
       </table>
     </div>
   </section>
@@ -619,6 +646,107 @@ campus/lkcsb/level2/room213</code></pre>
         <li><strong>Use only ASCII characters</strong></li>
         <li><strong>Embed Client ID</strong> in topic for authorization</li>
         <li><strong>Don't subscribe to <code>#</code></strong> (receives ALL messages &mdash; bandwidth killer)</li>
+        <li><strong>Design for extensibility</strong>: Topics don't need to be preallocated. Think about how topics can be extended for new features. A smart home adding new sensor types should be able to add them without changing the whole hierarchy.</li>
+        <li><strong>Use specific topics, not general ones</strong>: Instead of <code>home/bedroom</code> for all values, create <code>home/bedroom/temperature</code>, <code>home/bedroom/brightness</code>, <code>home/bedroom/humidity</code>.</li>
+      </ul>
+
+      <h3>Quality of Service (QoS)</h3>
+      <p>The QoS level defines the guarantee of delivery for a message. There are 3 QoS levels:</p>
+      <table>
+        <tr><th>QoS Level</th><th>Name</th><th>Guarantee</th><th>Mechanism</th></tr>
+        <tr><td><strong>QoS 0</strong></td><td>At most once</td><td>No guarantee ("fire and forget")</td><td>No acknowledgment. Relies on TCP. Message not stored or retransmitted.</td></tr>
+        <tr><td><strong>QoS 1</strong></td><td>At least once</td><td>Delivered at least once</td><td>Sender stores message until PUBACK received. May result in duplicates.</td></tr>
+        <tr><td><strong>QoS 2</strong></td><td>Exactly once</td><td>Received exactly once</td><td>Four-part handshake: PUBLISH &rarr; PUBREC &rarr; PUBREL &rarr; PUBCOMP. Safest but slowest.</td></tr>
+      </table>
+      <h4>QoS Rules</h4>
+      <ul>
+        <li>Publisher &rarr; broker: always uses the <strong>publisher's</strong> chosen QoS level</li>
+        <li>Broker &rarr; subscriber: uses the <strong>lower</strong> of QoS(publisher &rarr; broker) and QoS(broker &rarr; subscriber)</li>
+        <li>Example: Subscriber QoS 0, Publisher QoS 2 &rarr; broker delivers at QoS 0</li>
+        <li>Example: Subscriber QoS 2, Publisher QoS 1 &rarr; broker delivers at QoS 1</li>
+      </ul>
+
+      <h3>Message Filtering</h3>
+      <p>The broker filters messages so each subscriber only receives messages of interest:</p>
+      <ul>
+        <li><strong>Topic-based filtering</strong>: Subscriber subscribes to topics of interest. Broker ensures subscriber gets all messages published to those topics. <em>Primary method used in MQTT.</em></li>
+        <li><strong>Content-based filtering</strong>: Subscriber filters based on message content using a filter language. Downside: content must be known beforehand and cannot be encrypted.</li>
+        <li><strong>Type-based filtering</strong>: Subscriber filters by message type (e.g., all messages of type Exception).</li>
+      </ul>
+
+      <h3>MQTT Communication Patterns</h3>
+      <h4>Point-to-point</h4>
+      <ul>
+        <li>Two devices use a single MQTT topic as the communication channel</li>
+        <li>Also works one-to-many: publisher sends different messages to multiple subscribers using one unique topic per subscriber</li>
+        <li>Example: Room occupancy sensor publishes to <code>sensor/occupancy/room7</code>; a digital display subscribes to the same topic</li>
+      </ul>
+      <h4>Broadcast</h4>
+      <ul>
+        <li>One-to-many: the <strong>same message</strong> is sent to a large fleet of devices</li>
+        <li>Multiple devices subscribe to the same topic; sender publishes one message</li>
+        <li>Example: Weather station broadcasts to <code>dt/us/NY/weather</code>; all delivery vehicles in NY subscribe</li>
+      </ul>
+      <h4>Fan-in</h4>
+      <ul>
+        <li>Many-to-one (reverse of broadcast): multiple devices publish, one single subscriber aggregates</li>
+        <li>Subscriber may use wildcards to aggregate similar but unique topics</li>
+        <li>Example: Air quality sensors publish to <code>environment/building/lax002/airqual/zone1</code>, <code>.../zone2</code>; a component subscribes to <code>environment/building/lax002/airqual/+</code></li>
+      </ul>
+
+      <h3>Retained Messages</h3>
+      <ul>
+        <li>An MQTT message includes a <strong>retained flag</strong> (boolean)</li>
+        <li>A retained message is stored by the broker as the <strong>last</strong> retained message for that topic, along with its QoS</li>
+        <li>Every topic can only have <strong>one</strong> retained message &mdash; a newer one replaces the older</li>
+        <li>Each new subscriber to a topic <strong>receives the retained message immediately</strong> after subscribing</li>
+        <li>However, they will NOT receive older non-retained published messages</li>
+        <li>Like joining a Telegram group with "Chat History" set to "Hidden" &mdash; you only get the last pinned message</li>
+        <li>Helps new subscribers get the last known status without waiting for the next publish</li>
+      </ul>
+
+      <h3>Last Will and Testament</h3>
+      <ul>
+        <li>When disconnecting, a client should send a <strong>DISCONNECT</strong> message. If it doesn't and the TCP connection drops, this is an <strong>ungraceful disconnection</strong></li>
+        <li>A <strong>Last Will</strong> message notifies other clients about an ungraceful disconnection</li>
+        <li>Each client specifies its Last Will message (topic + payload) when connecting to the broker</li>
+        <li>The broker stores it and only sends it to subscribers of the Last Will topic when the client disconnects <strong>ungracefully</strong></li>
+        <li>If the client disconnects gracefully with DISCONNECT, the broker <strong>discards</strong> the Last Will message</li>
+      </ul>
+
+      <h3>Persistent Sessions</h3>
+      <ul>
+        <li>In a non-persistent session, a disconnected client must reconnect and re-subscribe to all topics</li>
+        <li>A client can request a <strong>persistent session</strong> when connecting to avoid re-subscribing</li>
+        <li>The broker saves (identified by Client ID):
+          <ul>
+            <li>All the client's subscriptions</li>
+            <li>All messages in QoS 1 or 2 flow that were interrupted</li>
+            <li>All new QoS 1 or 2 messages missed while offline</li>
+            <li>All QoS 2 messages not yet completely acknowledged</li>
+          </ul>
+        </li>
+        <li>A <strong>session expiry interval</strong> (in seconds) can be set. After disconnect, if the client hasn't reconnected within this period, the session is deleted</li>
+        <li>The client also stores: all QoS 1/2 messages not yet confirmed by broker, and all QoS 2 messages not yet completely acknowledged</li>
+        <li>When the client reconnects, stored information is available immediately</li>
+      </ul>
+
+      <h3>User Properties</h3>
+      <ul>
+        <li><strong>Key-value string pairs</strong> appended to most types of MQTT messages (similar to HTTP headers)</li>
+        <li>Makes the MQTT protocol extensible for application-specific needs</li>
+        <li>Example: Publishers add <code>schema:JSON</code> or <code>schema:XML1.1</code> so subscribers know the data format</li>
+        <li>Example: Publisher adds <code>region:canada</code> as a user property for traceability in complex IoT deployments</li>
+      </ul>
+
+      <h3>Shared Subscriptions</h3>
+      <ul>
+        <li>In standard MQTT, each subscriber receives a copy of <strong>every</strong> message on a topic</li>
+        <li>In a <strong>shared subscription</strong>, clients in the same group receive messages in an <strong>alternating</strong> (round-robin) fashion</li>
+        <li>Useful for <strong>client load balancing</strong> when a topic has a high message rate</li>
+        <li>Topic structure: <code>$share/GROUPID/TOPIC</code></li>
+        <li>Three parts: <code>$share</code> (static identifier), group identifier, actual topic (may include wildcards)</li>
+        <li>Each subscription group acts as a virtual client &mdash; the broker selects one subscriber from the group to deliver each message</li>
       </ul>
     </div>
   </section>
@@ -682,7 +810,38 @@ campus/lkcsb/level2/room213</code></pre>
         <li><strong>Change over time</strong>: Trends and temporal comparisons</li>
         <li><strong>Category comparison</strong>: Compare between distinct groups</li>
         <li><strong>Ranking</strong>: Show items in ordered position</li>
-        <li><strong>Part-to-whole</strong>: Show how parts sum to a total</li>
+        <li><strong>Part-to-whole</strong>: Show how parts sum to a total (stacked bar, pie, donut, stacked area, treemap, sunburst)</li>
+        <li><strong>Correlation</strong>: Show correlation between variables (scatterplot, bubble, column/line, heatmap)</li>
+        <li><strong>Distribution</strong>: How often values occur (histogram, box plot, violin, density)</li>
+        <li><strong>Flow</strong>: Movement of data between states (Sankey, Gantt, chord, network)</li>
+        <li><strong>Relationship</strong>: How items relate (network, Venn diagram, chord, sunburst)</li>
+      </ul>
+
+      <h3>Visual Encoding</h3>
+      <p><strong>Visual encoding</strong> is translating data into visual form. Graphical attributes for both quantitative and qualitative data:</p>
+      <ul>
+        <li><strong>Shape</strong>: Different shapes represent categories (circles, squares, triangles). Precise shapes for close exploration; less detail for general trends.</li>
+        <li><strong>Color</strong>: Four primary ways: (1) distinguishing categories, (2) representing quantity, (3) highlighting specific data (use sparingly), (4) expressing meaning (e.g., red = danger). Always reinforce color with other visual cues &mdash; don't use color alone.</li>
+        <li><strong>Size, Area, Volume</strong>: Larger = greater value</li>
+        <li><strong>Length</strong>: Bar length corresponds to value</li>
+        <li><strong>Angle</strong>: Pie chart slices</li>
+        <li><strong>Position, Direction, Density</strong>: Location on axes, flow direction, concentration of points</li>
+      </ul>
+      <blockquote><strong>Multiple attributes</strong>: A bar's color could represent a category, while its length represents a value.</blockquote>
+
+      <h3>Style</h3>
+      <ul>
+        <li><strong>Graphical elements</strong>: Shapes, lines, colors, images to represent data</li>
+        <li><strong>Typography</strong>: Font selection, size, spacing for readability</li>
+        <li><strong>Iconography</strong>: Symbols/icons to depict concepts, reducing text reliance</li>
+        <li><strong>Axes and labels</strong>: Set scales and reference points</li>
+        <li><strong>Legends and annotations</strong>: Additional context to clarify meanings</li>
+      </ul>
+
+      <h3>Accessibility (WCAG)</h3>
+      <ul>
+        <li><strong>Alternative text</strong>: Helps screen readers understand non-text elements</li>
+        <li><strong>Contrast and color accessibility</strong>: Meet WCAG contrast standards so color differences are distinguishable to users with visual impairments</li>
       </ul>
     </div>
   </section>
@@ -800,6 +959,55 @@ campus/lkcsb/level2/room213</code></pre>
         <li><strong>Up gateway</strong>: Device &rarr; Gateway &rarr; Server (same topic, mirrored upward)</li>
         <li><strong>Down gateway</strong>: Server &rarr; Gateway &rarr; Device (same topic, mirrored downward)</li>
       </ul>
+
+      <h4>Telemetry Pattern</h4>
+      <p><em>Problem:</em> IoT devices need to reliably sense and transmit data from their environment across intermittent networks.</p>
+      <p><em>Solution:</em> Use the Telemetry pattern:</p>
+      <ol>
+        <li>Device obtains a sensor measurement</li>
+        <li>Device publishes a message to <code>telemetry/deviceID</code> containing the measurement</li>
+        <li>Server applies rules for fine-grained routing based on the message data</li>
+        <li>Routing sends the message to other components of the solution</li>
+      </ol>
+
+      <h4>Telemetry Archiving Pattern</h4>
+      <p><em>Problem:</em> IoT solutions need real-time, batch-mode, and predictive analysis. Historical data must be preserved for future analysis.</p>
+      <p><em>Solution:</em> Store raw unprocessed sensor data with timestamps supporting in-order replay:</p>
+      <ol>
+        <li>Device publishes measurement to <code>telemetry/deviceID</code></li>
+        <li>Server rules fan out messages to a <strong>processing path</strong> and a <strong>raw storage path</strong></li>
+        <li>Processing path computes results needed by other components</li>
+        <li>Raw storage path saves original messages supporting in-order replay</li>
+        <li>A future component can read raw messages from a point in time and replay them to <code>telemetry/deviceID/replay</code></li>
+      </ol>
+
+      <h4>Software Update Pattern</h4>
+      <p><em>Problem:</em> IoT devices need software updates with minimal human intervention, at scale.</p>
+      <p><em>Solution:</em> Combine the Command and Device State Replica patterns:</p>
+      <ol>
+        <li>Device subscribes to <code>state/deviceID/update/delta</code></li>
+        <li>Application places new software in accessible storage</li>
+        <li>Application publishes desired state (with new software URL) to <code>state/deviceID/update</code></li>
+        <li>Device State Replica records desired state, publishes delta to device</li>
+        <li>Device receives delta (the "software update" command) with the new software URL</li>
+        <li>Device downloads and applies the new software</li>
+        <li>Device publishes acknowledgement with new software version to <code>state/deviceID/update</code></li>
+        <li>Replica publishes to <code>state/deviceID/update/accepted</code> &mdash; update complete</li>
+      </ol>
+
+      <h4>MVC Device Software Design Pattern</h4>
+      <p><em>Problem:</em> IoT devices have common concerns: reporting state, processing control messages, and presenting status. The software should be reusable across platforms.</p>
+      <p><em>Solution:</em> Apply the Model-View-Controller pattern:</p>
+      <table>
+        <tr><th>Component</th><th>Role</th><th>Rules</th></tr>
+        <tr><td><strong>Model</strong></td><td>Represents overall device state (signals, metrics, peripherals)</td><td>Only component that reads from hardware via HAL. Should not write to device.</td></tr>
+        <tr><td><strong>View</strong></td><td>Handles presentation of data from the Model</td><td>Multiple views possible (LEDs, JSON for network). Reads from Model, never from hardware directly.</td></tr>
+        <tr><td><strong>Controller</strong></td><td>Takes actions to change device state/configuration</td><td>Only component that writes to the device. View must use Controller for local actions.</td></tr>
+      </table>
+      <ul>
+        <li><strong>Observer pattern</strong>: Hardware readings and network commands are <strong>observable</strong> data. View and Controller are <strong>observers</strong> that subscribe to changes.</li>
+        <li><strong>Hardware Abstraction Layer (HAL)</strong>: Abstracts hardware into API calls (e.g., <code>readAccelerometer()</code>). If hardware changes, only HAL needs updating &mdash; Model doesn't need to know.</li>
+      </ul>
     </div>
   </section>
 
@@ -831,8 +1039,9 @@ campus/lkcsb/level2/room213</code></pre>
       </ul>
       <p><strong>Spreading Factor</strong>: How fast the frequency changes</p>
       <ul>
-        <li><strong>High SF</strong>: Frequency changes slowly &rarr; longer range, lower data rate</li>
-        <li><strong>Low SF</strong>: Frequency changes quickly &rarr; shorter range, higher data rate</li>
+        <li><strong>High SF</strong>: Frequency changes slowly &rarr; longer range, lower data rate, higher energy, more airtime, more resilient to interference</li>
+        <li><strong>Low SF</strong>: Frequency changes quickly &rarr; shorter range, higher data rate, lower energy, less airtime</li>
+        <li>Due to spread spectrum technology, <strong>communications with different data rates do not interfere</strong> with each other</li>
       </ul>
 
       <h3>Duty Cycles</h3>
@@ -852,6 +1061,15 @@ campus/lkcsb/level2/room213</code></pre>
         <tr><td>Encryption</td><td>128-bit <strong>Network Session Key</strong> + 128-bit <strong>Application Session Key</strong></td></tr>
       </table>
       <p><strong>Adaptive Data Rate</strong>: Network server optimizes spreading factor, bandwidth, and power per device.</p>
+      <p>Two encryption layers enable <strong>multi-tenanted shared networks</strong> without the network operator having visibility of user data.</p>
+      <h4>End-device operating pattern</h4>
+      <p>Devices follow a general cycle: <strong>sleep &rarr; transmit &rarr; receive &rarr; sleep</strong></p>
+      <ol>
+        <li><strong>Sleep</strong>: Device neither sends nor receives</li>
+        <li><strong>Transmit</strong>: When it has data, wakes and sends</li>
+        <li><strong>Receive</strong>: Listens for incoming data (receive windows)</li>
+        <li><strong>Sleep</strong>: Goes back to sleep</li>
+      </ol>
 
       <h3>LoRaWAN Topology: Star-of-Stars</h3>
       <pre><code>End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server
@@ -928,11 +1146,13 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       <h3>What is Thread?</h3>
       <p>An <strong>open standard</strong> for reliable, low-power, <strong>wireless mesh networking</strong>. Designed for IP-based networking where every device gets an IP address.</p>
       <ul>
+        <li><strong>IP-based networking</strong>: Every device gets an IP address, making it easy to communicate with any other IP device</li>
         <li><strong>Self-configuring and self-healing</strong></li>
         <li><strong>Secure</strong> (all communications encrypted, devices authorized)</li>
-        <li><strong>Scalable</strong> (hundreds of devices per mesh)</li>
+        <li><strong>Scalable</strong> (hundreds of devices per mesh). <strong>Thread Domains</strong> feature enables multiple networks to work together seamlessly.</li>
         <li><strong>Resilient</strong> (no single point of failure by design)</li>
         <li><strong>Efficient</strong> (long battery life with duty cycling)</li>
+        <li>Uses <strong>spread spectrum technology</strong> at the physical layer for good immunity to interference</li>
       </ul>
 
       <h3>Node Roles</h3>
@@ -1023,6 +1243,16 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
         <tr><td><code>ff03::2</code></td><td>Mesh-Local</td><td>All FTDs</td></tr>
       </table>
 
+      <h3>Mesh Link Establishment (MLE)</h3>
+      <p>Thread uses the <strong>MLE protocol</strong> to configure links and disseminate network information:</p>
+      <ul>
+        <li>Discover links to neighboring devices</li>
+        <li>Determine the quality of links to neighboring devices</li>
+        <li>Establish links to neighboring devices</li>
+        <li>Negotiate link parameters with peers</li>
+      </ul>
+      <p><strong>MLE disseminates:</strong> Leader data, Network data, Route propagation data.</p>
+
       <h3>Network Discovery and Formation</h3>
       <h4>Network identifiers</h4>
       <ul>
@@ -1058,6 +1288,17 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
         <li>Every End Device is directly connected to a Router</li>
       </ul>
       <p>Thread adds routers for: coverage, path diversity, redundancy, more children. Removes routers when: max 32 exceeded, or space needed elsewhere.</p>
+
+      <h3>Upgrading to a Router</h3>
+      <p>After attaching as a Child (End Device), a device may elect to become a Router:</p>
+      <ol>
+        <li>Child sends an <strong>Address Solicit</strong> message to the Leader, asking for a Router ID</li>
+        <li>If the Leader accepts, it responds with a Router ID</li>
+        <li>Child upgrades itself to a Router</li>
+        <li>New Router sends a multicast <strong>MLE Link Request</strong> to neighboring Routers</li>
+        <li>Routers respond with <strong>Link Accept and Request</strong> messages</li>
+        <li>New Router responds to each with a unicast <strong>Link Accept</strong> to establish bi-directional Router-Router links</li>
+      </ol>
     </div>
   </section>
 
@@ -1071,15 +1312,24 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     <div class="chapter-body">
 
       <h3>What is Matter?</h3>
-      <p>An <strong>interoperable standard</strong> for smart home devices, aiming to replace proprietary protocols. Built on <strong>IPv6</strong>.</p>
+      <p>An <strong>interoperable standard</strong> for smart home devices, aiming to replace proprietary protocols. Built on <strong>IPv6</strong>. Builds upon years of experience with low power <strong>802.15.4</strong> networks (a global standard for low-rate wireless personal area networks) and Wi-Fi smart home devices.</p>
       <ul>
         <li>Application-layer protocol in the TCP/IP model</li>
         <li>Runs over <strong>Wi-Fi, Ethernet, and Thread</strong></li>
-        <li>Strong cryptography</li>
-        <li>Supports <strong>bridging</strong> other protocols (Zigbee, Bluetooth Mesh, Z-Wave)</li>
+        <li>Strong cryptography with well-defined Device Types and data modeling</li>
+        <li>Supports <strong>bridging</strong> other protocols (Zigbee, Bluetooth Mesh, Z-Wave). A <strong>Bridge</strong> is a member device of both a Matter network and another bridged IoT technology &mdash; giving bridged devices access to Matter ecosystems while Matter leverages those technologies' large user bases.</li>
         <li><strong>Multi-admin</strong>: Multiple administrators can control devices</li>
         <li>BLE used for initial commissioning</li>
       </ul>
+
+      <h3>Matter Controller and Commissioning</h3>
+      <p>The <strong>Matter Controller</strong> (e.g., phone, smart hub) pairs with and controls Matter devices:</p>
+      <ol>
+        <li>During <strong>commissioning</strong>, controller uses <strong>BLE</strong> to securely pass network credentials and provision the device into Thread or Wi-Fi</li>
+        <li>Controller has the <strong>Commissioner</strong> role at this stage</li>
+        <li>Once complete, device joins IPv6 network with all info needed to operate securely</li>
+        <li>After joining, <strong>IPv6 communication</strong> is used for application messages (BLE no longer needed)</li>
+      </ol>
 
       <h3>Matter Network Topology</h3>
       <ul>
@@ -1121,7 +1371,8 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       </table>
 
       <h3>Device Types</h3>
-      <p>A <strong>Device Type</strong> is an officially defined collection of mandatory and optional Clusters. If a device implements a Device Type, it <strong>must</strong> implement all mandatory Clusters.</p>
+      <p>A <strong>Device Type</strong> is an officially defined collection of mandatory and optional Clusters on one or more Endpoints. If a device implements a Device Type, it <strong>must</strong> implement all mandatory Clusters.</p>
+      <p>Each definition comprises: <strong>Device Type ID</strong>, <strong>Device Type revision</strong>, and one or more <strong>mandatory clusters and revisions</strong>. Device Types are specified in the <strong>Device Library</strong> (not the main Matter spec). Application Clusters are in the <strong>Application Cluster Library</strong>.</p>
 
       <h3>Clients and Servers</h3>
       <table>
@@ -1183,7 +1434,13 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
         <li>Matter uses IPv6 for all operational communications</li>
         <li><strong>Thread Border Router</strong> bridges Thread and Wi-Fi/Ethernet networks</li>
         <li>Border Router is a <strong>Stub Router</strong> (connects stub/last-mile network to regular network)</li>
-        <li>Responsibilities: auto-configure IPv6, publish multicast DNS for Thread Nodes, forward only relevant packets to Thread (avoid overloading low-bandwidth Thread)</li>
+        <li>Responsibilities: auto-configure IPv6, publish multicast DNS for Thread Nodes, forward only relevant packets to Thread (Thread bandwidth is <strong>orders of magnitude less than Wi-Fi</strong> &mdash; bridging all Wi-Fi multicast would flood it)</li>
+        <li>Border Router connects the <strong>stub network</strong> (Thread) to the <strong>Adjacent Infrastructure Network</strong> (local Wi-Fi or Ethernet)</li>
+      </ul>
+      <h4>Low Power and Proxy Architecture</h4>
+      <ul>
+        <li>Some Matter Nodes are wired (radios always on). Others are battery-powered, using Thread.</li>
+        <li>The <strong>proxy architecture</strong>, along with Thread Sleepy End Devices, allows full-powered Nodes to provide both network-level and application-level functionality that <strong>insulates child Nodes from energy-intensive transactions</strong>.</li>
       </ul>
     </div>
   </section>

@@ -1716,7 +1716,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
         bodyEl.textContent = 'Error: ' + data.error;
         bodyEl.className = 'explain-popup-body error';
       } else {
-        bodyEl.textContent = data.explanation;
+        bodyEl.innerHTML = sanitizeHTML(data.explanation);
         bodyEl.className = 'explain-popup-body';
       }
     } catch (err) {
@@ -1724,6 +1724,29 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       bodyEl.className = 'explain-popup-body error';
     }
   });
+
+  // Sanitize HTML — allow only safe tags, strip everything dangerous
+  function sanitizeHTML(html) {
+    const ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'BR', 'P', 'UL', 'OL', 'LI', 'CODE', 'SPAN']);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    function clean(node) {
+      const children = [...node.childNodes];
+      for (const child of children) {
+        if (child.nodeType === Node.TEXT_NODE) continue;
+        if (child.nodeType !== Node.ELEMENT_NODE || !ALLOWED_TAGS.has(child.tagName)) {
+          child.replaceWith(...child.childNodes);
+          continue;
+        }
+        // Strip all attributes (removes onclick, onerror, style, etc.)
+        while (child.attributes.length > 0) {
+          child.removeAttribute(child.attributes[0].name);
+        }
+        clean(child);
+      }
+    }
+    clean(doc.body);
+    return doc.body.innerHTML;
+  }
 
   function closeExplain() {
     document.getElementById('explain-popup').classList.remove('show');

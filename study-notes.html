@@ -481,6 +481,64 @@
       text-align: right;
     }
 
+    /* Looked-up term badges */
+    .looked-up {
+      border-bottom: 2px dotted #818cf8;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.15s;
+    }
+
+    .looked-up:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-radius: 2px;
+    }
+
+    .looked-up::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      right: -6px;
+      width: 6px;
+      height: 6px;
+      background: #818cf8;
+      border-radius: 50%;
+    }
+
+    .badge-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #475569;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      margin-left: 8px;
+    }
+
+    .badge-count .dot {
+      width: 6px;
+      height: 6px;
+      background: #818cf8;
+      border-radius: 50%;
+    }
+
+    .clear-badges-btn {
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid #475569;
+      background: transparent;
+      color: #64748b;
+      font-size: 0.7rem;
+      cursor: pointer;
+      margin-left: 4px;
+      transition: all 0.2s;
+    }
+
+    .clear-badges-btn:hover { border-color: #f87171; color: #fca5a5; }
+
     /* Responsive */
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
@@ -503,6 +561,8 @@
   <div class="topbar-links">
     <a href="index.html">Flashcards</a>
     <a href="study-notes.html" class="active">Study Notes</a>
+    <span class="badge-count" id="badge-count" style="display:none"><span class="dot"></span><span id="badge-num">0</span> looked up</span>
+    <button class="clear-badges-btn" id="clear-badges" style="display:none" onclick="clearBadges()">Clear</button>
   </div>
 </div>
 
@@ -1866,6 +1926,159 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
   }
 
   document.getElementById('explain-overlay').addEventListener('click', closeExplain);
+
+  // ============ BADGE / LOOKUP HISTORY ============
+  const STORAGE_KEY = 'cs462-lookups';
+  let allLookups = []; // merged local + server lookups
+
+  function getLocalLookups() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  // Merge server lookups into local — server is source of truth, local supplements
+  function mergeLookups(serverLookups, localLookups) {
+    const merged = [...serverLookups];
+    const serverKeys = new Set(serverLookups.map(l => l.text.toLowerCase().trim()));
+    for (const l of localLookups) {
+      if (!serverKeys.has(l.text.toLowerCase().trim())) {
+        merged.push(l);
+      }
+    }
+    return merged;
+  }
+
+  async function fetchServerLookups() {
+    try {
+      const res = await fetch(WORKER_URL + '/lookups');
+      if (res.ok) return await res.json();
+    } catch {}
+    return [];
+  }
+
+  function saveLookupLocal(text, explanation, question) {
+    const lookups = getLocalLookups();
+    const key = text.toLowerCase().trim();
+    const idx = lookups.findIndex(l => l.text.toLowerCase().trim() === key);
+    if (idx >= 0) {
+      lookups[idx].explanation = explanation;
+      lookups[idx].timestamp = Date.now();
+      if (question) lookups[idx].question = question;
+    } else {
+      lookups.push({ text, explanation, question: question || null, timestamp: Date.now() });
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(lookups));
+  }
+
+  function applyBadges() {
+    const lookups = allLookups;
+
+    // Remove existing badges first
+    document.querySelectorAll('.looked-up').forEach(el => {
+      const parent = el.parentNode;
+      parent.replaceChild(document.createTextNode(el.textContent), el);
+      parent.normalize();
+    });
+
+    if (lookups.length === 0) {
+      document.getElementById('badge-count').style.display = 'none';
+      document.getElementById('clear-badges').style.display = 'none';
+      return;
+    }
+
+    // Update counter
+    document.getElementById('badge-count').style.display = 'inline-flex';
+    document.getElementById('clear-badges').style.display = 'inline-block';
+    document.getElementById('badge-num').textContent = lookups.length;
+
+    // Apply badges in chapter bodies
+    const bodies = document.querySelectorAll('.chapter-body');
+    lookups.forEach(lookup => {
+      const searchText = lookup.text;
+      if (searchText.length < 2 || searchText.length > 100) return;
+
+      bodies.forEach(body => {
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+        const matches = [];
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          if (node.parentElement.classList?.contains('looked-up')) continue;
+          const idx = node.textContent.indexOf(searchText);
+          if (idx !== -1) matches.push({ node, idx });
+        }
+        // Only badge first occurrence per chapter
+        if (matches.length > 0) {
+          const { node, idx } = matches[0];
+          const range = document.createRange();
+          range.setStart(node, idx);
+          range.setEnd(node, idx + searchText.length);
+          const span = document.createElement('span');
+          span.className = 'looked-up';
+          span.dataset.lookup = searchText;
+          span.title = lookup.question
+            ? 'Q: ' + lookup.question + ' (click to view)'
+            : 'Click to see explanation';
+          range.surroundContents(span);
+        }
+      });
+    });
+  }
+
+  // Click a badge to show cached explanation (+ question if it was an Ask)
+  document.addEventListener('click', e => {
+    const badge = e.target.closest('.looked-up');
+    if (!badge) return;
+    const lookup = allLookups.find(l => l.text === badge.dataset.lookup);
+    if (!lookup) return;
+
+    const popup = document.getElementById('explain-popup');
+    const overlay = document.getElementById('explain-overlay');
+    const termEl = document.getElementById('explain-term');
+    const bodyEl = document.getElementById('explain-body');
+
+    const label = lookup.text.length > 60 ? lookup.text.substring(0, 60) + '...' : lookup.text;
+    termEl.textContent = label;
+
+    let html = '';
+    if (lookup.question) {
+      html += '<p style="color:#94a3b8;font-size:0.82rem;margin-bottom:10px"><b style="color:#5eead4">Q:</b> ' + sanitizeHTML(lookup.question) + '</p>';
+    }
+    html += lookup.explanation;
+    bodyEl.innerHTML = sanitizeHTML(html);
+    bodyEl.className = 'explain-popup-body';
+    document.getElementById('ask-input-row').classList.remove('show');
+    popup.classList.add('show');
+    overlay.classList.add('show');
+  });
+
+  function clearBadges() {
+    localStorage.removeItem(STORAGE_KEY);
+    allLookups = [];
+    applyBadges();
+  }
+
+  // Hook into callExplain to save results (local + server saves via worker)
+  let _lastQuestion = null;
+  const _origCallExplain = callExplain;
+  callExplain = async function(text, context, question) {
+    _lastQuestion = question;
+    await _origCallExplain(text, context, question);
+    const bodyEl = document.getElementById('explain-body');
+    if (!bodyEl.classList.contains('error') && !bodyEl.classList.contains('loading')) {
+      saveLookupLocal(text, bodyEl.innerHTML, question);
+      // Refresh merged lookups
+      allLookups = mergeLookups(await fetchServerLookups(), getLocalLookups());
+      applyBadges();
+    }
+  };
+
+  // Load shared + local lookups on page load
+  (async () => {
+    const serverLookups = await fetchServerLookups();
+    const localLookups = getLocalLookups();
+    allLookups = mergeLookups(serverLookups, localLookups);
+    applyBadges();
+  })();
 </script>
 </body>
 </html>

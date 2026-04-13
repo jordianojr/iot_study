@@ -350,6 +350,61 @@
 
     .explain-btn:hover { background: #4338ca; }
 
+    .ask-btn {
+      position: absolute;
+      background: #0f766e;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      z-index: 200;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      display: none;
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+
+    .ask-btn:hover { background: #115e59; }
+
+    .ask-input-row {
+      display: none;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .ask-input-row.show { display: flex; }
+
+    .ask-input {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .ask-input::placeholder { color: #64748b; }
+    .ask-input:focus { border-color: #818cf8; }
+
+    .ask-submit {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      background: #0f766e;
+      color: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    .ask-submit:hover { background: #115e59; }
+
     .explain-popup {
       position: fixed;
       top: 50%;
@@ -1543,11 +1598,16 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 </main>
 
 <button class="explain-btn" id="explain-btn">Explain</button>
+<button class="ask-btn" id="ask-btn">Ask</button>
 <div class="explain-overlay" id="explain-overlay"></div>
 <div class="explain-popup" id="explain-popup">
   <div class="explain-popup-header">
     <span class="explain-popup-term" id="explain-term"></span>
     <button class="explain-popup-close" onclick="closeExplain()">&times;</button>
+  </div>
+  <div class="ask-input-row" id="ask-input-row">
+    <input class="ask-input" id="ask-input" type="text" placeholder="Ask a question about this..." autocomplete="off">
+    <button class="ask-submit" id="ask-submit">Send</button>
   </div>
   <div class="explain-popup-body" id="explain-body"></div>
   <div class="explain-powered">Powered by Claude</div>
@@ -1659,45 +1719,49 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
   const WORKER_URL = 'https://cs462-explain.jordianojr.workers.dev';
 
   const explainBtn = document.getElementById('explain-btn');
+  const askBtn = document.getElementById('ask-btn');
   let selectedText = '';
   let selectedContext = '';
 
-  // Show "Explain" button near text selection
+  // Show "Explain" and "Ask" buttons near text selection
   document.addEventListener('mouseup', e => {
     const sel = window.getSelection();
     const text = sel.toString().trim();
 
     if (text.length >= 2 && text.length <= 500 && e.target.closest('.chapter-body')) {
       selectedText = text;
-      // Get surrounding context (parent element text, truncated)
       const parent = sel.anchorNode?.parentElement;
       selectedContext = parent ? parent.textContent.substring(0, 200) : '';
 
       explainBtn.style.display = 'block';
       explainBtn.style.left = e.pageX + 'px';
       explainBtn.style.top = (e.pageY - 40) + 'px';
+
+      askBtn.style.display = 'block';
+      askBtn.style.left = (e.pageX + 72) + 'px';
+      askBtn.style.top = (e.pageY - 40) + 'px';
     } else {
       explainBtn.style.display = 'none';
+      askBtn.style.display = 'none';
     }
   });
 
-  // Hide button when clicking elsewhere
+  // Hide buttons when clicking elsewhere
   document.addEventListener('mousedown', e => {
-    if (e.target !== explainBtn) {
+    if (e.target !== explainBtn && e.target !== askBtn) {
       explainBtn.style.display = 'none';
+      askBtn.style.display = 'none';
     }
   });
 
-  // Explain button click
-  explainBtn.addEventListener('click', async () => {
-    explainBtn.style.display = 'none';
-
+  // Shared function to call the worker
+  async function callExplain(text, context, question) {
+    const bodyEl = document.getElementById('explain-body');
+    const termEl = document.getElementById('explain-term');
     const popup = document.getElementById('explain-popup');
     const overlay = document.getElementById('explain-overlay');
-    const termEl = document.getElementById('explain-term');
-    const bodyEl = document.getElementById('explain-body');
 
-    termEl.textContent = selectedText.length > 60 ? selectedText.substring(0, 60) + '...' : selectedText;
+    termEl.textContent = text.length > 60 ? text.substring(0, 60) + '...' : text;
     bodyEl.textContent = 'Thinking...';
     bodyEl.className = 'explain-popup-body loading';
     popup.classList.add('show');
@@ -1707,7 +1771,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: selectedText, context: selectedContext }),
+        body: JSON.stringify({ text, context, question: question || undefined }),
       });
 
       const data = await res.json();
@@ -1722,6 +1786,53 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     } catch (err) {
       bodyEl.textContent = 'Could not connect to the explain service. Make sure the Cloudflare Worker is deployed and the URL is set correctly.';
       bodyEl.className = 'explain-popup-body error';
+    }
+  }
+
+  // Explain button — immediate explanation
+  explainBtn.addEventListener('click', () => {
+    explainBtn.style.display = 'none';
+    askBtn.style.display = 'none';
+    document.getElementById('ask-input-row').classList.remove('show');
+    callExplain(selectedText, selectedContext, null);
+  });
+
+  // Ask button — open popup with input field
+  askBtn.addEventListener('click', () => {
+    explainBtn.style.display = 'none';
+    askBtn.style.display = 'none';
+
+    const popup = document.getElementById('explain-popup');
+    const overlay = document.getElementById('explain-overlay');
+    const termEl = document.getElementById('explain-term');
+    const bodyEl = document.getElementById('explain-body');
+    const inputRow = document.getElementById('ask-input-row');
+    const input = document.getElementById('ask-input');
+
+    termEl.textContent = selectedText.length > 60 ? selectedText.substring(0, 60) + '...' : selectedText;
+    bodyEl.textContent = '';
+    bodyEl.className = 'explain-popup-body';
+    inputRow.classList.add('show');
+    popup.classList.add('show');
+    overlay.classList.add('show');
+    input.value = '';
+    input.focus();
+  });
+
+  // Submit question
+  document.getElementById('ask-submit').addEventListener('click', () => {
+    const input = document.getElementById('ask-input');
+    const question = input.value.trim();
+    if (!question) return;
+    document.getElementById('ask-input-row').classList.remove('show');
+    callExplain(selectedText, selectedContext, question);
+  });
+
+  // Enter key submits question
+  document.getElementById('ask-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('ask-submit').click();
     }
   });
 
@@ -1751,6 +1862,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
   function closeExplain() {
     document.getElementById('explain-popup').classList.remove('show');
     document.getElementById('explain-overlay').classList.remove('show');
+    document.getElementById('ask-input-row').classList.remove('show');
   }
 
   document.getElementById('explain-overlay').addEventListener('click', closeExplain);

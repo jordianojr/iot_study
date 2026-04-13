@@ -2274,7 +2274,9 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     });
 
     html += '</div>';
-    bodyEl.innerHTML = sanitizeHTML(html);
+    // Don't sanitize the outer HTML — it's built by us (trusted).
+    // Individual entry.explanation values were already sanitized when saved.
+    bodyEl.innerHTML = html;
     bodyEl.className = 'explain-popup-body';
     document.getElementById('ask-input-row').classList.remove('show');
     popup.classList.add('show');

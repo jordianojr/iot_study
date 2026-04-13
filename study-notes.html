@@ -525,59 +525,93 @@
     }
 
     /* Modal entry styles */
-    .explain-entries { margin-top: 8px; }
+    .explain-entries {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
 
     .explain-entry {
-      padding: 12px;
-      margin-bottom: 10px;
       border-radius: 10px;
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid #334155;
+      overflow: hidden;
+      transition: border-color 0.15s;
     }
 
-    .explain-entry:last-child { margin-bottom: 0; }
+    .explain-entry:hover { border-color: #475569; }
 
     .explain-entry-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .explain-entry-chevron {
+      color: #475569;
+      font-size: 0.7rem;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .explain-entry.open .explain-entry-chevron {
+      transform: rotate(90deg);
     }
 
     .explain-entry-type {
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      padding: 2px 8px;
+      padding: 2px 7px;
       border-radius: 4px;
+      flex-shrink: 0;
     }
 
     .explain-entry-type.type-explain {
-      background: rgba(99, 102, 241, 0.2);
-      color: #a5b4fc;
-    }
-
-    .explain-entry-type.type-ask {
       background: rgba(20, 184, 166, 0.2);
       color: #5eead4;
     }
 
-    .explain-entry-highlight {
-      font-size: 0.78rem;
-      color: #64748b;
-      font-style: italic;
+    .explain-entry-type.type-ask {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
     }
+
+    .explain-entry-highlight {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .explain-entry-detail {
+      display: none;
+      padding: 0 14px 14px;
+    }
+
+    .explain-entry.open .explain-entry-detail { display: block; }
 
     .explain-entry-question {
       font-size: 0.82rem;
-      color: #94a3b8;
-      margin-bottom: 6px;
+      color: #5eead4;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      background: rgba(20, 184, 166, 0.08);
+      border-radius: 6px;
+      border-left: 3px solid #14b8a6;
     }
 
     .explain-entry-body {
       font-size: 0.9rem;
-      line-height: 1.6;
+      line-height: 1.65;
       color: #cbd5e1;
     }
 
@@ -2188,8 +2222,15 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     });
   }
 
-  // Click a badge — show all entries split by Explain vs Ask
+  // Click a badge — show all entries as collapsible cards
   document.addEventListener('click', e => {
+    // Handle card expand/collapse inside modal
+    const header = e.target.closest('.explain-entry-header');
+    if (header) {
+      header.parentElement.classList.toggle('open');
+      return;
+    }
+
     const badge = e.target.closest('.looked-up');
     if (!badge) return;
 
@@ -2202,38 +2243,35 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     const termEl = document.getElementById('explain-term');
     const bodyEl = document.getElementById('explain-body');
 
-    termEl.textContent = group.entries.length + ' lookup(s)';
+    const count = group.entries.length;
+    termEl.textContent = count + ' lookup' + (count !== 1 ? 's' : '');
 
-    // Sort entries: explains first, then asks, newest first within each
-    const explains = group.entries.filter(e => !e.question).sort((a, b) => b.timestamp - a.timestamp);
-    const asks = group.entries.filter(e => e.question).sort((a, b) => b.timestamp - a.timestamp);
+    // Sort: newest first
+    const sorted = [...group.entries].sort((a, b) => b.timestamp - a.timestamp);
 
     let html = '<div class="explain-entries">';
 
-    if (explains.length > 0) {
-      explains.forEach(entry => {
-        html += '<div class="explain-entry">';
-        html += '<div class="explain-entry-header">';
-        html += '<span class="explain-entry-type type-explain">Explain</span>';
-        html += '<span class="explain-entry-highlight">"' + escapeHTML(entry.text) + '"</span>';
-        html += '</div>';
-        html += '<div class="explain-entry-body">' + entry.explanation + '</div>';
-        html += '</div>';
-      });
-    }
+    sorted.forEach((entry, i) => {
+      const isAsk = !!entry.question;
+      const typeClass = isAsk ? 'type-ask' : 'type-explain';
+      const typeLabel = isAsk ? 'Ask' : 'Explain';
+      // Auto-open the first (newest) card
+      const openClass = i === 0 ? ' open' : '';
 
-    if (asks.length > 0) {
-      asks.forEach(entry => {
-        html += '<div class="explain-entry">';
-        html += '<div class="explain-entry-header">';
-        html += '<span class="explain-entry-type type-ask">Ask</span>';
-        html += '<span class="explain-entry-highlight">"' + escapeHTML(entry.text) + '"</span>';
-        html += '</div>';
-        html += '<div class="explain-entry-question"><b style="color:#5eead4">Q:</b> ' + escapeHTML(entry.question) + '</div>';
-        html += '<div class="explain-entry-body">' + entry.explanation + '</div>';
-        html += '</div>';
-      });
-    }
+      html += '<div class="explain-entry' + openClass + '">';
+      html += '<div class="explain-entry-header">';
+      html += '<span class="explain-entry-chevron">&#9654;</span>';
+      html += '<span class="explain-entry-type ' + typeClass + '">' + typeLabel + '</span>';
+      html += '<span class="explain-entry-highlight">' + escapeHTML(entry.text) + '</span>';
+      html += '</div>';
+      html += '<div class="explain-entry-detail">';
+      if (isAsk) {
+        html += '<div class="explain-entry-question"><b>Q:</b> ' + escapeHTML(entry.question) + '</div>';
+      }
+      html += '<div class="explain-entry-body">' + entry.explanation + '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
 
     html += '</div>';
     bodyEl.innerHTML = sanitizeHTML(html);

@@ -2340,8 +2340,11 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     return div.innerHTML;
   }
 
-  function clearBadges() {
+  async function clearBadges() {
+    if (!confirm('Clear all ' + allLookups.length + ' lookups? This removes them from both this browser and the shared server. This cannot be undone.')) return;
     localStorage.removeItem(STORAGE_KEY);
+    // Clear server KV
+    try { await fetch(WORKER_URL + '/lookups', { method: 'DELETE' }); } catch {}
     allLookups = [];
     applyBadges();
   }

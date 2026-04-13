@@ -495,14 +495,90 @@
     }
 
     .looked-up::after {
-      content: '';
+      content: attr(data-count);
       position: absolute;
-      top: -2px;
-      right: -6px;
+      top: -10px;
+      right: -12px;
+      min-width: 16px;
+      height: 16px;
+      background: #4f46e5;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      line-height: 1;
+    }
+
+    .looked-up[data-count="1"]::after {
+      content: '';
+      min-width: 6px;
       width: 6px;
       height: 6px;
+      top: -2px;
+      right: -6px;
+      padding: 0;
       background: #818cf8;
-      border-radius: 50%;
+    }
+
+    /* Modal entry styles */
+    .explain-entries { margin-top: 8px; }
+
+    .explain-entry {
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+    }
+
+    .explain-entry:last-child { margin-bottom: 0; }
+
+    .explain-entry-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .explain-entry-type {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .explain-entry-type.type-explain {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+    }
+
+    .explain-entry-type.type-ask {
+      background: rgba(20, 184, 166, 0.2);
+      color: #5eead4;
+    }
+
+    .explain-entry-highlight {
+      font-size: 0.78rem;
+      color: #64748b;
+      font-style: italic;
+    }
+
+    .explain-entry-question {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .explain-entry-body {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: #cbd5e1;
     }
 
     .badge-count {
@@ -1933,7 +2009,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
   // Sanitize HTML — allow only safe tags, strip everything dangerous
   function sanitizeHTML(html) {
-    const ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'BR', 'P', 'UL', 'OL', 'LI', 'CODE', 'SPAN']);
+    const ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'BR', 'P', 'UL', 'OL', 'LI', 'CODE', 'SPAN', 'DIV']);
     const doc = new DOMParser().parseFromString(html, 'text/html');
     function clean(node) {
       const children = [...node.childNodes];
@@ -1964,7 +2040,8 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
   // ============ BADGE / LOOKUP HISTORY ============
   const STORAGE_KEY = 'cs462-lookups';
-  let allLookups = [];
+  let allLookups = []; // flat list of all entries
+  let badgeGroups = []; // grouped by position for badge rendering
 
   function getLocalLookups() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
@@ -1973,10 +2050,13 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
   function mergeLookups(serverLookups, localLookups) {
     const merged = [...serverLookups];
-    const serverKeys = new Set(serverLookups.map(l => l.chapterId + ':' + l.offset));
+    // Dedupe: skip local entries that match server by chapterId+offset+question
+    const serverSigs = new Set(serverLookups.map(l =>
+      l.chapterId + ':' + l.offset + ':' + (l.question || '')
+    ));
     for (const l of localLookups) {
-      const k = l.chapterId + ':' + l.offset;
-      if (!serverKeys.has(k)) merged.push(l);
+      const sig = l.chapterId + ':' + l.offset + ':' + (l.question || '');
+      if (!serverSigs.has(sig)) merged.push(l);
     }
     return merged;
   }
@@ -1991,7 +2071,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
   function saveLookupLocal(text, explanation, question, position) {
     const lookups = getLocalLookups();
-    const entry = {
+    lookups.push({
       text,
       explanation,
       question: question || null,
@@ -1999,18 +2079,47 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       offset: position?.offset ?? -1,
       length: position?.length || text.length,
       timestamp: Date.now(),
-    };
-    // Dedupe by exact position
-    const idx = lookups.findIndex(l => l.chapterId === entry.chapterId && l.offset === entry.offset);
-    if (idx >= 0) {
-      lookups[idx] = entry;
-    } else {
-      lookups.push(entry);
-    }
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lookups));
   }
 
-  // Find the text node + local offset at a given character offset within a container
+  // Group overlapping lookups into badge groups
+  // Each group = { chapterId, offset, length, text, entries[] }
+  // where entries are the individual explain/ask lookups at that position
+  function groupLookups(lookups) {
+    const valid = lookups.filter(l => l.chapterId && l.offset >= 0);
+    if (valid.length === 0) return [];
+
+    // Sort by chapter then offset
+    valid.sort((a, b) => {
+      if (a.chapterId !== b.chapterId) return a.chapterId.localeCompare(b.chapterId);
+      return a.offset - b.offset;
+    });
+
+    const groups = [];
+    for (const l of valid) {
+      // Check if this overlaps with the last group in the same chapter
+      const last = groups.length > 0 ? groups[groups.length - 1] : null;
+      if (last && last.chapterId === l.chapterId &&
+          l.offset < last.offset + last.length) {
+        // Overlaps — add to existing group, expand range
+        last.entries.push(l);
+        const newEnd = Math.max(last.offset + last.length, l.offset + l.length);
+        last.length = newEnd - last.offset;
+      } else {
+        // New group
+        groups.push({
+          chapterId: l.chapterId,
+          offset: l.offset,
+          length: l.length,
+          text: l.text,
+          entries: [l],
+        });
+      }
+    }
+    return groups;
+  }
+
   function findNodeAtOffset(container, targetOffset) {
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let charCount = 0;
@@ -2033,9 +2142,9 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       parent.normalize();
     });
 
-    const lookups = allLookups;
+    badgeGroups = groupLookups(allLookups);
 
-    if (lookups.length === 0) {
+    if (badgeGroups.length === 0) {
       document.getElementById('badge-count').style.display = 'none';
       document.getElementById('clear-badges').style.display = 'none';
       return;
@@ -2043,69 +2152,90 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
     document.getElementById('badge-count').style.display = 'inline-flex';
     document.getElementById('clear-badges').style.display = 'inline-block';
-    document.getElementById('badge-num').textContent = lookups.length;
+    document.getElementById('badge-num').textContent = allLookups.filter(l => l.chapterId && l.offset >= 0).length;
 
-    // Sort by offset descending so wrapping doesn't shift later offsets
-    const sorted = [...lookups].filter(l => l.chapterId && l.offset >= 0).sort((a, b) => {
-      if (a.chapterId !== b.chapterId) return a.chapterId.localeCompare(b.chapterId);
-      return b.offset - a.offset; // descending
-    });
+    // Process in reverse offset order so wrapping doesn't shift later offsets
+    const reversed = [...badgeGroups].reverse();
 
-    sorted.forEach((lookup, i) => {
-      const chapter = document.getElementById(lookup.chapterId);
+    reversed.forEach((group, ri) => {
+      const groupIdx = badgeGroups.length - 1 - ri; // actual index in badgeGroups
+      const chapter = document.getElementById(group.chapterId);
       if (!chapter) return;
       const body = chapter.querySelector('.chapter-body');
       if (!body) return;
-      // Make sure chapter is expanded
       chapter.classList.remove('collapsed');
 
-      const start = findNodeAtOffset(body, lookup.offset);
+      // Use the first entry's text for the badge (the original highlight)
+      const first = group.entries[0];
+      const start = findNodeAtOffset(body, first.offset);
       if (!start) return;
 
       try {
         const range = document.createRange();
         range.setStart(start.node, start.localOffset);
-        range.setEnd(start.node, Math.min(start.localOffset + lookup.length, start.node.textContent.length));
+        range.setEnd(start.node, Math.min(start.localOffset + first.length, start.node.textContent.length));
 
-        // Verify the text matches (guard against DOM changes)
-        if (range.toString() !== lookup.text) return;
+        if (range.toString() !== first.text) return;
+        if (start.node.parentElement.closest('.looked-up')) return;
 
         const span = document.createElement('span');
         span.className = 'looked-up';
-        span.dataset.idx = String(i);
-        span.title = lookup.question
-          ? 'Q: ' + lookup.question
-          : 'Click to see explanation';
+        span.dataset.groupIdx = String(groupIdx);
+        span.dataset.count = String(group.entries.length);
+        span.title = group.entries.length + ' lookup(s) — click to view';
         range.surroundContents(span);
       } catch {}
     });
   }
 
-  // Click a badge to show cached explanation
+  // Click a badge — show all entries split by Explain vs Ask
   document.addEventListener('click', e => {
     const badge = e.target.closest('.looked-up');
     if (!badge) return;
 
-    const idx = parseInt(badge.dataset.idx);
-    const sorted = [...allLookups].filter(l => l.chapterId && l.offset >= 0).sort((a, b) => {
-      if (a.chapterId !== b.chapterId) return a.chapterId.localeCompare(b.chapterId);
-      return b.offset - a.offset;
-    });
-    const lookup = sorted[idx];
-    if (!lookup) return;
+    const groupIdx = parseInt(badge.dataset.groupIdx);
+    const group = badgeGroups[groupIdx];
+    if (!group) return;
 
     const popup = document.getElementById('explain-popup');
     const overlay = document.getElementById('explain-overlay');
     const termEl = document.getElementById('explain-term');
     const bodyEl = document.getElementById('explain-body');
 
-    termEl.textContent = lookup.text.length > 60 ? lookup.text.substring(0, 60) + '...' : lookup.text;
+    termEl.textContent = group.entries.length + ' lookup(s)';
 
-    let html = '';
-    if (lookup.question) {
-      html += '<p style="color:#94a3b8;font-size:0.82rem;margin-bottom:10px"><b style="color:#5eead4">Q:</b> ' + sanitizeHTML(lookup.question) + '</p>';
+    // Sort entries: explains first, then asks, newest first within each
+    const explains = group.entries.filter(e => !e.question).sort((a, b) => b.timestamp - a.timestamp);
+    const asks = group.entries.filter(e => e.question).sort((a, b) => b.timestamp - a.timestamp);
+
+    let html = '<div class="explain-entries">';
+
+    if (explains.length > 0) {
+      explains.forEach(entry => {
+        html += '<div class="explain-entry">';
+        html += '<div class="explain-entry-header">';
+        html += '<span class="explain-entry-type type-explain">Explain</span>';
+        html += '<span class="explain-entry-highlight">"' + escapeHTML(entry.text) + '"</span>';
+        html += '</div>';
+        html += '<div class="explain-entry-body">' + entry.explanation + '</div>';
+        html += '</div>';
+      });
     }
-    html += lookup.explanation;
+
+    if (asks.length > 0) {
+      asks.forEach(entry => {
+        html += '<div class="explain-entry">';
+        html += '<div class="explain-entry-header">';
+        html += '<span class="explain-entry-type type-ask">Ask</span>';
+        html += '<span class="explain-entry-highlight">"' + escapeHTML(entry.text) + '"</span>';
+        html += '</div>';
+        html += '<div class="explain-entry-question"><b style="color:#5eead4">Q:</b> ' + escapeHTML(entry.question) + '</div>';
+        html += '<div class="explain-entry-body">' + entry.explanation + '</div>';
+        html += '</div>';
+      });
+    }
+
+    html += '</div>';
     bodyEl.innerHTML = sanitizeHTML(html);
     bodyEl.className = 'explain-popup-body';
     document.getElementById('ask-input-row').classList.remove('show');
@@ -2113,16 +2243,22 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     overlay.classList.add('show');
   });
 
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   function clearBadges() {
     localStorage.removeItem(STORAGE_KEY);
     allLookups = [];
     applyBadges();
   }
 
-  // Hook into callExplain to save results with exact position
+  // Hook into callExplain — always save (overlapping = adds to group count)
   const _origCallExplain = callExplain;
   callExplain = async function(text, context, question) {
-    const pos = selectedPosition; // capture before async
+    const pos = selectedPosition;
     await _origCallExplain(text, context, question);
     const bodyEl = document.getElementById('explain-body');
     if (!bodyEl.classList.contains('error') && !bodyEl.classList.contains('loading')) {

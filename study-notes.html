@@ -673,7 +673,7 @@
     <a href="index.html">Flashcards</a>
     <a href="study-notes.html" class="active">Study Notes</a>
     <span class="badge-count" id="badge-count" style="display:none"><span class="dot"></span><span id="badge-num">0</span> looked up</span>
-    <button class="clear-badges-btn" id="clear-badges" style="display:none" onclick="clearBadges()">Clear</button>
+    <button class="clear-badges-btn" id="clear-badges" style="display:none">Clear</button>
   </div>
 </div>
 
@@ -1909,49 +1909,87 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
   }
 
   // Show "Explain" and "Ask" buttons near text selection
-  document.addEventListener('mouseup', e => {
+  // Works on both desktop (mouseup) and mobile (selectionchange)
+  function showButtonsForSelection(posX, posY) {
     const sel = window.getSelection();
     const text = sel.toString().trim();
 
-    if (text.length >= 2 && text.length <= 500 && e.target.closest('.chapter-body')) {
-      selectedText = text;
-      const parent = sel.anchorNode?.parentElement;
-      selectedContext = parent ? parent.textContent.substring(0, 200) : '';
-
-      // Capture exact position
-      const chapterEl = e.target.closest('.chapter');
-      const chapterBody = chapterEl?.querySelector('.chapter-body');
-      if (chapterEl && chapterBody && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        const offset = getTextOffset(chapterBody, range.startContainer, range.startOffset);
-        if (offset >= 0) {
-          selectedPosition = {
-            chapterId: chapterEl.id,
-            offset: offset,
-            length: text.length,
-          };
-        }
-      }
-
-      explainBtn.style.display = 'block';
-      explainBtn.style.left = e.pageX + 'px';
-      explainBtn.style.top = (e.pageY - 40) + 'px';
-
-      askBtn.style.display = 'block';
-      askBtn.style.left = (e.pageX + 72) + 'px';
-      askBtn.style.top = (e.pageY - 40) + 'px';
-    } else {
+    if (text.length < 2 || text.length > 500 || sel.rangeCount === 0) {
       explainBtn.style.display = 'none';
       askBtn.style.display = 'none';
+      return;
     }
+
+    const range = sel.getRangeAt(0);
+    const container = range.startContainer.parentElement?.closest('.chapter-body');
+    if (!container) {
+      explainBtn.style.display = 'none';
+      askBtn.style.display = 'none';
+      return;
+    }
+
+    selectedText = text;
+    const parent = sel.anchorNode?.parentElement;
+    selectedContext = parent ? parent.textContent.substring(0, 200) : '';
+
+    // Capture exact position
+    const chapterEl = container.closest('.chapter');
+    if (chapterEl) {
+      const offset = getTextOffset(container, range.startContainer, range.startOffset);
+      if (offset >= 0) {
+        selectedPosition = {
+          chapterId: chapterEl.id,
+          offset: offset,
+          length: text.length,
+        };
+      }
+    }
+
+    // Position buttons — use provided coords or fallback to range bounding rect
+    let x = posX, y = posY;
+    if (x === undefined || y === undefined) {
+      const rect = range.getBoundingClientRect();
+      x = rect.left + window.scrollX + rect.width / 2;
+      y = rect.top + window.scrollY - 8;
+    }
+
+    explainBtn.style.display = 'block';
+    explainBtn.style.left = x + 'px';
+    explainBtn.style.top = (y - 40) + 'px';
+
+    askBtn.style.display = 'block';
+    askBtn.style.left = (x + 72) + 'px';
+    askBtn.style.top = (y - 40) + 'px';
+  }
+
+  // Desktop: mouseup
+  document.addEventListener('mouseup', e => {
+    showButtonsForSelection(e.pageX, e.pageY);
   });
 
-  // Hide buttons when clicking elsewhere
-  document.addEventListener('mousedown', e => {
+  // Mobile: selectionchange (fires when user drags selection handles)
+  let selectionTimer = null;
+  document.addEventListener('selectionchange', () => {
+    clearTimeout(selectionTimer);
+    selectionTimer = setTimeout(() => {
+      const sel = window.getSelection();
+      if (sel && sel.toString().trim().length >= 2) {
+        showButtonsForSelection();
+      }
+    }, 300);
+  });
+
+  // Hide buttons when tapping/clicking elsewhere
+  function hideButtons(e) {
     if (e.target !== explainBtn && e.target !== askBtn) {
       explainBtn.style.display = 'none';
       askBtn.style.display = 'none';
     }
+  }
+  document.addEventListener('mousedown', hideButtons);
+  document.addEventListener('touchstart', e => {
+    // Delay slightly so button tap registers before hiding
+    setTimeout(() => hideButtons(e), 100);
   });
 
   // Shared function to call the worker
@@ -2307,6 +2345,8 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     allLookups = [];
     applyBadges();
   }
+
+  document.getElementById('clear-badges').addEventListener('click', clearBadges);
 
   // Hook into callExplain — always save (overlapping = adds to group count)
   const _origCallExplain = callExplain;

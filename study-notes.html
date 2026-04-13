@@ -484,7 +484,7 @@
     /* Looked-up term badges */
     .looked-up {
       border-bottom: 2px dotted #818cf8;
-      cursor: pointer;
+      cursor: text;
       position: relative;
       transition: background 0.15s;
     }
@@ -511,17 +511,18 @@
       justify-content: center;
       padding: 0 3px;
       line-height: 1;
+      cursor: pointer;
     }
 
     .looked-up[data-count="1"]::after {
-      content: '';
-      min-width: 6px;
-      width: 6px;
-      height: 6px;
-      top: -2px;
-      right: -6px;
-      padding: 0;
-      background: #818cf8;
+      content: '1';
+      min-width: 14px;
+      height: 14px;
+      top: -8px;
+      right: -10px;
+      padding: 0 2px;
+      background: #4f46e5;
+      cursor: pointer;
     }
 
     /* Modal entry styles */
@@ -2233,6 +2234,18 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
     const badge = e.target.closest('.looked-up');
     if (!badge) return;
+
+    // Only open lookup modal if clicking the count dot area (top-right corner)
+    // If user has a text selection, they're highlighting — don't open modal
+    const sel = window.getSelection();
+    if (sel && sel.toString().trim().length > 0) return;
+
+    // Check if click is near the badge dot/count (top-right area of the span)
+    const rect = badge.getBoundingClientRect();
+    const clickX = e.clientX;
+    const clickY = e.clientY;
+    const isNearBadgeDot = clickX >= rect.right - 20 && clickY <= rect.top + 16;
+    if (!isNearBadgeDot) return;
 
     const groupIdx = parseInt(badge.dataset.groupIdx);
     const group = badgeGroups[groupIdx];

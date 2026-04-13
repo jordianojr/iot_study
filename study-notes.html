@@ -2193,6 +2193,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     return groups;
   }
 
+  // Returns { node, localOffset } for a given character offset in a container
   function findNodeAtOffset(container, targetOffset) {
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let charCount = 0;
@@ -2205,6 +2206,27 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       charCount += len;
     }
     return null;
+  }
+
+  // Get the full text content from a character range across multiple nodes
+  function getTextInRange(container, startOffset, length) {
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let charCount = 0;
+    let result = '';
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const nodeText = node.textContent;
+      const nodeStart = charCount;
+      const nodeEnd = charCount + nodeText.length;
+      if (nodeEnd > startOffset && nodeStart < startOffset + length) {
+        const sliceStart = Math.max(0, startOffset - nodeStart);
+        const sliceEnd = Math.min(nodeText.length, startOffset + length - nodeStart);
+        result += nodeText.substring(sliceStart, sliceEnd);
+      }
+      charCount += nodeText.length;
+      if (charCount >= startOffset + length) break;
+    }
+    return result;
   }
 
   function applyBadges() {
@@ -2244,12 +2266,18 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       if (!start) return;
 
       try {
+        if (start.node.parentElement.closest('.looked-up')) return;
+
+        // Verify the stored text still matches the DOM
+        const actualText = getTextInRange(body, first.offset, first.length);
+        if (actualText !== first.text) return;
+
+        // Wrap only the portion within the first text node
+        // (safe even for cross-element selections — badge pill appears at the start)
+        const endInNode = Math.min(start.localOffset + first.length, start.node.textContent.length);
         const range = document.createRange();
         range.setStart(start.node, start.localOffset);
-        range.setEnd(start.node, Math.min(start.localOffset + first.length, start.node.textContent.length));
-
-        if (range.toString() !== first.text) return;
-        if (start.node.parentElement.closest('.looked-up')) return;
+        range.setEnd(start.node, endInNode);
 
         const span = document.createElement('span');
         span.className = 'looked-up';

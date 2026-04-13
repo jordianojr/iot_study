@@ -1782,6 +1782,20 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
   const askBtn = document.getElementById('ask-btn');
   let selectedText = '';
   let selectedContext = '';
+  let selectedPosition = null; // { chapterId, offset, length }
+
+  // Compute character offset of a node within a chapter body
+  function getTextOffset(chapterBody, targetNode, targetOffset) {
+    const walker = document.createTreeWalker(chapterBody, NodeFilter.SHOW_TEXT);
+    let charCount = 0;
+    while (walker.nextNode()) {
+      if (walker.currentNode === targetNode) {
+        return charCount + targetOffset;
+      }
+      charCount += walker.currentNode.textContent.length;
+    }
+    return -1;
+  }
 
   // Show "Explain" and "Ask" buttons near text selection
   document.addEventListener('mouseup', e => {
@@ -1792,6 +1806,21 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       selectedText = text;
       const parent = sel.anchorNode?.parentElement;
       selectedContext = parent ? parent.textContent.substring(0, 200) : '';
+
+      // Capture exact position
+      const chapterEl = e.target.closest('.chapter');
+      const chapterBody = chapterEl?.querySelector('.chapter-body');
+      if (chapterEl && chapterBody && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const offset = getTextOffset(chapterBody, range.startContainer, range.startOffset);
+        if (offset >= 0) {
+          selectedPosition = {
+            chapterId: chapterEl.id,
+            offset: offset,
+            length: text.length,
+          };
+        }
+      }
 
       explainBtn.style.display = 'block';
       explainBtn.style.left = e.pageX + 'px';
@@ -1831,7 +1860,13 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, context, question: question || undefined }),
+        body: JSON.stringify({
+          text, context,
+          question: question || undefined,
+          chapterId: selectedPosition?.chapterId,
+          offset: selectedPosition?.offset,
+          length: selectedPosition?.length,
+        }),
       });
 
       const data = await res.json();
@@ -1929,21 +1964,19 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 
   // ============ BADGE / LOOKUP HISTORY ============
   const STORAGE_KEY = 'cs462-lookups';
-  let allLookups = []; // merged local + server lookups
+  let allLookups = [];
 
   function getLocalLookups() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
     catch { return []; }
   }
 
-  // Merge server lookups into local — server is source of truth, local supplements
   function mergeLookups(serverLookups, localLookups) {
     const merged = [...serverLookups];
-    const serverKeys = new Set(serverLookups.map(l => l.text.toLowerCase().trim()));
+    const serverKeys = new Set(serverLookups.map(l => l.chapterId + ':' + l.offset));
     for (const l of localLookups) {
-      if (!serverKeys.has(l.text.toLowerCase().trim())) {
-        merged.push(l);
-      }
+      const k = l.chapterId + ':' + l.offset;
+      if (!serverKeys.has(k)) merged.push(l);
     }
     return merged;
   }
@@ -1956,29 +1989,51 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     return [];
   }
 
-  function saveLookupLocal(text, explanation, question) {
+  function saveLookupLocal(text, explanation, question, position) {
     const lookups = getLocalLookups();
-    const key = text.toLowerCase().trim();
-    const idx = lookups.findIndex(l => l.text.toLowerCase().trim() === key);
+    const entry = {
+      text,
+      explanation,
+      question: question || null,
+      chapterId: position?.chapterId || null,
+      offset: position?.offset ?? -1,
+      length: position?.length || text.length,
+      timestamp: Date.now(),
+    };
+    // Dedupe by exact position
+    const idx = lookups.findIndex(l => l.chapterId === entry.chapterId && l.offset === entry.offset);
     if (idx >= 0) {
-      lookups[idx].explanation = explanation;
-      lookups[idx].timestamp = Date.now();
-      if (question) lookups[idx].question = question;
+      lookups[idx] = entry;
     } else {
-      lookups.push({ text, explanation, question: question || null, timestamp: Date.now() });
+      lookups.push(entry);
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lookups));
   }
 
-  function applyBadges() {
-    const lookups = allLookups;
+  // Find the text node + local offset at a given character offset within a container
+  function findNodeAtOffset(container, targetOffset) {
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let charCount = 0;
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const len = node.textContent.length;
+      if (charCount + len > targetOffset) {
+        return { node, localOffset: targetOffset - charCount };
+      }
+      charCount += len;
+    }
+    return null;
+  }
 
-    // Remove existing badges first
+  function applyBadges() {
+    // Remove existing badges
     document.querySelectorAll('.looked-up').forEach(el => {
       const parent = el.parentNode;
       parent.replaceChild(document.createTextNode(el.textContent), el);
       parent.normalize();
     });
+
+    const lookups = allLookups;
 
     if (lookups.length === 0) {
       document.getElementById('badge-count').style.display = 'none';
@@ -1986,49 +2041,57 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       return;
     }
 
-    // Update counter
     document.getElementById('badge-count').style.display = 'inline-flex';
     document.getElementById('clear-badges').style.display = 'inline-block';
     document.getElementById('badge-num').textContent = lookups.length;
 
-    // Apply badges in chapter bodies
-    const bodies = document.querySelectorAll('.chapter-body');
-    lookups.forEach(lookup => {
-      const searchText = lookup.text;
-      if (searchText.length < 2 || searchText.length > 100) return;
+    // Sort by offset descending so wrapping doesn't shift later offsets
+    const sorted = [...lookups].filter(l => l.chapterId && l.offset >= 0).sort((a, b) => {
+      if (a.chapterId !== b.chapterId) return a.chapterId.localeCompare(b.chapterId);
+      return b.offset - a.offset; // descending
+    });
 
-      bodies.forEach(body => {
-        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
-        const matches = [];
-        while (walker.nextNode()) {
-          const node = walker.currentNode;
-          if (node.parentElement.classList?.contains('looked-up')) continue;
-          const idx = node.textContent.indexOf(searchText);
-          if (idx !== -1) matches.push({ node, idx });
-        }
-        // Only badge first occurrence per chapter
-        if (matches.length > 0) {
-          const { node, idx } = matches[0];
-          const range = document.createRange();
-          range.setStart(node, idx);
-          range.setEnd(node, idx + searchText.length);
-          const span = document.createElement('span');
-          span.className = 'looked-up';
-          span.dataset.lookup = searchText;
-          span.title = lookup.question
-            ? 'Q: ' + lookup.question + ' (click to view)'
-            : 'Click to see explanation';
-          range.surroundContents(span);
-        }
-      });
+    sorted.forEach((lookup, i) => {
+      const chapter = document.getElementById(lookup.chapterId);
+      if (!chapter) return;
+      const body = chapter.querySelector('.chapter-body');
+      if (!body) return;
+      // Make sure chapter is expanded
+      chapter.classList.remove('collapsed');
+
+      const start = findNodeAtOffset(body, lookup.offset);
+      if (!start) return;
+
+      try {
+        const range = document.createRange();
+        range.setStart(start.node, start.localOffset);
+        range.setEnd(start.node, Math.min(start.localOffset + lookup.length, start.node.textContent.length));
+
+        // Verify the text matches (guard against DOM changes)
+        if (range.toString() !== lookup.text) return;
+
+        const span = document.createElement('span');
+        span.className = 'looked-up';
+        span.dataset.idx = String(i);
+        span.title = lookup.question
+          ? 'Q: ' + lookup.question
+          : 'Click to see explanation';
+        range.surroundContents(span);
+      } catch {}
     });
   }
 
-  // Click a badge to show cached explanation (+ question if it was an Ask)
+  // Click a badge to show cached explanation
   document.addEventListener('click', e => {
     const badge = e.target.closest('.looked-up');
     if (!badge) return;
-    const lookup = allLookups.find(l => l.text === badge.dataset.lookup);
+
+    const idx = parseInt(badge.dataset.idx);
+    const sorted = [...allLookups].filter(l => l.chapterId && l.offset >= 0).sort((a, b) => {
+      if (a.chapterId !== b.chapterId) return a.chapterId.localeCompare(b.chapterId);
+      return b.offset - a.offset;
+    });
+    const lookup = sorted[idx];
     if (!lookup) return;
 
     const popup = document.getElementById('explain-popup');
@@ -2036,8 +2099,7 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     const termEl = document.getElementById('explain-term');
     const bodyEl = document.getElementById('explain-body');
 
-    const label = lookup.text.length > 60 ? lookup.text.substring(0, 60) + '...' : lookup.text;
-    termEl.textContent = label;
+    termEl.textContent = lookup.text.length > 60 ? lookup.text.substring(0, 60) + '...' : lookup.text;
 
     let html = '';
     if (lookup.question) {
@@ -2057,26 +2119,23 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
     applyBadges();
   }
 
-  // Hook into callExplain to save results (local + server saves via worker)
-  let _lastQuestion = null;
+  // Hook into callExplain to save results with exact position
   const _origCallExplain = callExplain;
   callExplain = async function(text, context, question) {
-    _lastQuestion = question;
+    const pos = selectedPosition; // capture before async
     await _origCallExplain(text, context, question);
     const bodyEl = document.getElementById('explain-body');
     if (!bodyEl.classList.contains('error') && !bodyEl.classList.contains('loading')) {
-      saveLookupLocal(text, bodyEl.innerHTML, question);
-      // Refresh merged lookups
+      saveLookupLocal(text, bodyEl.innerHTML, question, pos);
       allLookups = mergeLookups(await fetchServerLookups(), getLocalLookups());
       applyBadges();
     }
   };
 
-  // Load shared + local lookups on page load
+  // Load lookups on page load
   (async () => {
     const serverLookups = await fetchServerLookups();
-    const localLookups = getLocalLookups();
-    allLookups = mergeLookups(serverLookups, localLookups);
+    allLookups = mergeLookups(serverLookups, getLocalLookups());
     applyBadges();
   })();
 </script>

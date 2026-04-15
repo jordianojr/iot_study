@@ -709,6 +709,19 @@
       margin-bottom: 6px;
     }
 
+    .history-chapter-heading {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #818cf8;
+      font-weight: 700;
+      padding: 14px 4px 8px;
+      border-bottom: 1px solid #334155;
+      margin-bottom: 10px;
+    }
+
+    .history-chapter-heading:first-child { padding-top: 4px; }
+
     .history-item-text {
       font-size: 0.88rem;
       color: #e2e8f0;
@@ -2544,14 +2557,33 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       return;
     }
 
-    // Sort groups by most recent entry timestamp (newest first)
+    // Sort groups: by chapter order (top → bottom), then by offset within chapter
+    const chapterOrder = {};
+    document.querySelectorAll('.chapter').forEach((ch, i) => {
+      chapterOrder[ch.id] = i;
+    });
+
     const sortedGroups = [...badgeGroups].map((g, idx) => ({
       group: g,
       origIdx: idx,
-      latest: Math.max(...g.entries.map(e => e.timestamp || 0)),
-    })).sort((a, b) => b.latest - a.latest);
+    })).sort((a, b) => {
+      const orderA = chapterOrder[a.group.chapterId] ?? 999;
+      const orderB = chapterOrder[b.group.chapterId] ?? 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.group.offset - b.group.offset;
+    });
 
+    let lastChapterId = null;
     sortedGroups.forEach(({ group, origIdx }) => {
+      // Insert chapter heading when chapter changes
+      if (group.chapterId !== lastChapterId) {
+        const heading = document.createElement('div');
+        heading.className = 'history-chapter-heading';
+        heading.textContent = chapterTitle(group.chapterId);
+        list.appendChild(heading);
+        lastChapterId = group.chapterId;
+      }
+
       const item = document.createElement('div');
       item.className = 'history-item';
       item.dataset.groupIdx = String(origIdx);
@@ -2570,7 +2602,6 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
       }
 
       item.innerHTML =
-        '<div class="history-item-chapter">' + escapeHTML(chapterTitle(group.chapterId)) + '</div>' +
         '<div class="history-item-text">"' + escapeHTML(group.text) + '"</div>' +
         '<div class="history-item-meta">' + badgesHtml + '</div>';
 

@@ -627,6 +627,145 @@
       color: #94a3b8;
       font-size: 0.75rem;
       margin-left: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .badge-count:hover {
+      border-color: #818cf8;
+      color: #c7d2fe;
+    }
+
+    /* History side panel */
+    .history-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 360px;
+      background: #1e293b;
+      border-left: 1px solid #334155;
+      transform: translateX(100%);
+      transition: transform 0.25s ease-out;
+      z-index: 250;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 32px rgba(0,0,0,0.4);
+    }
+
+    .history-panel.open { transform: translateX(0); }
+
+    .history-panel-header {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-panel-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .history-panel-close {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 0 6px;
+    }
+
+    .history-panel-close:hover { color: #e2e8f0; }
+
+    .history-panel-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .history-item {
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .history-item:hover {
+      border-color: #818cf8;
+      background: rgba(99, 102, 241, 0.08);
+    }
+
+    .history-item-chapter {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .history-item-text {
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .history-item-meta {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .history-item-badge {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .history-item-badge.type-explain {
+      background: rgba(20, 184, 166, 0.2);
+      color: #5eead4;
+    }
+
+    .history-item-badge.type-ask {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+    }
+
+    .history-item-count {
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+
+    .history-empty {
+      text-align: center;
+      color: #475569;
+      padding: 40px 20px;
+      font-size: 0.85rem;
+    }
+
+    /* Flash animation for scroll-to highlight */
+    @keyframes highlight-flash {
+      0% { background: rgba(99, 102, 241, 0.6); }
+      100% { background: transparent; }
+    }
+
+    .looked-up.flash { animation: highlight-flash 0.5s ease-out; }
+
+    @media (max-width: 600px) {
+      .history-panel { width: 85%; }
     }
 
     .badge-count .dot {
@@ -1771,6 +1910,14 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
 <button class="explain-btn" id="explain-btn">Explain</button>
 <button class="ask-btn" id="ask-btn">Ask</button>
 <div class="explain-overlay" id="explain-overlay"></div>
+
+<aside class="history-panel" id="history-panel">
+  <div class="history-panel-header">
+    <span class="history-panel-title">Lookup History</span>
+    <button class="history-panel-close" id="history-panel-close">&times;</button>
+  </div>
+  <div class="history-panel-list" id="history-panel-list"></div>
+</aside>
 <div class="explain-popup" id="explain-popup">
   <div class="explain-popup-header">
     <span class="explain-popup-term" id="explain-term"></span>
@@ -2378,6 +2525,102 @@ End-Device ---radio---&gt; Gateway ---internet---&gt; Network Server</code></pre
   }
 
   document.getElementById('clear-badges').addEventListener('click', clearBadges);
+
+  // ============ HISTORY SIDE PANEL ============
+  function chapterTitle(chapterId) {
+    const chapter = document.getElementById(chapterId);
+    if (!chapter) return chapterId;
+    const titleEl = chapter.querySelector('.chapter-title');
+    return titleEl ? titleEl.textContent.trim() : chapterId;
+  }
+
+  function openHistoryPanel() {
+    const list = document.getElementById('history-panel-list');
+    list.innerHTML = '';
+
+    if (badgeGroups.length === 0) {
+      list.innerHTML = '<div class="history-empty">No lookups yet. Highlight any text and click Explain or Ask.</div>';
+      document.getElementById('history-panel').classList.add('open');
+      return;
+    }
+
+    // Sort groups by most recent entry timestamp (newest first)
+    const sortedGroups = [...badgeGroups].map((g, idx) => ({
+      group: g,
+      origIdx: idx,
+      latest: Math.max(...g.entries.map(e => e.timestamp || 0)),
+    })).sort((a, b) => b.latest - a.latest);
+
+    sortedGroups.forEach(({ group, origIdx }) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.dataset.groupIdx = String(origIdx);
+
+      const hasExplain = group.entries.some(e => !e.question);
+      const hasAsk = group.entries.some(e => e.question);
+      const explainCount = group.entries.filter(e => !e.question).length;
+      const askCount = group.entries.filter(e => e.question).length;
+
+      let badgesHtml = '';
+      if (hasExplain) {
+        badgesHtml += '<span class="history-item-badge type-explain">Explain' + (explainCount > 1 ? ' ×' + explainCount : '') + '</span>';
+      }
+      if (hasAsk) {
+        badgesHtml += '<span class="history-item-badge type-ask">Ask' + (askCount > 1 ? ' ×' + askCount : '') + '</span>';
+      }
+
+      item.innerHTML =
+        '<div class="history-item-chapter">' + escapeHTML(chapterTitle(group.chapterId)) + '</div>' +
+        '<div class="history-item-text">"' + escapeHTML(group.text) + '"</div>' +
+        '<div class="history-item-meta">' + badgesHtml + '</div>';
+
+      item.addEventListener('click', () => {
+        scrollToBadge(origIdx);
+      });
+
+      list.appendChild(item);
+    });
+
+    document.getElementById('history-panel').classList.add('open');
+  }
+
+  function closeHistoryPanel() {
+    document.getElementById('history-panel').classList.remove('open');
+  }
+
+  function scrollToBadge(groupIdx) {
+    const badge = document.querySelector('.looked-up[data-group-idx="' + groupIdx + '"]');
+    if (!badge) return;
+
+    // Make sure the chapter is expanded
+    const chapter = badge.closest('.chapter');
+    if (chapter) chapter.classList.remove('collapsed');
+
+    // Scroll into view
+    badge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Close panel after a short delay so user sees the scroll
+    setTimeout(() => {
+      // Remove any existing flash, then trigger a new one
+      badge.classList.remove('flash');
+      // Force reflow so animation restarts
+      void badge.offsetWidth;
+      badge.classList.add('flash');
+    }, 300);
+  }
+
+  document.getElementById('badge-count').addEventListener('click', openHistoryPanel);
+  document.getElementById('history-panel-close').addEventListener('click', closeHistoryPanel);
+
+  // Close panel when clicking outside (but not on badges/notes)
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('history-panel');
+    if (!panel.classList.contains('open')) return;
+    if (panel.contains(e.target)) return;
+    if (e.target.closest('#badge-count')) return;
+    if (e.target.closest('.looked-up')) return;
+    closeHistoryPanel();
+  });
 
   // Hook into callExplain — always save (overlapping = adds to group count)
   const _origCallExplain = callExplain;

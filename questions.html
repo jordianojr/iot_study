@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS462 IoT — Practice Questions</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; line-height: 1.6;
+  }
+
+  .topbar {
+    position: sticky; top: 0; height: 56px; background: #1e293b;
+    border-bottom: 1px solid #334155; display: flex;
+    align-items: center; justify-content: space-between;
+    padding: 0 24px; z-index: 100;
+  }
+  .topbar h1 { font-size: 1.15rem; color: #f8fafc; }
+  .topbar-links { display: flex; gap: 8px; }
+  .topbar-links a {
+    padding: 6px 16px; border-radius: 8px; border: 1px solid #475569;
+    color: #94a3b8; font-size: 0.8rem; text-decoration: none;
+  }
+  .topbar-links a:hover { border-color: #818cf8; color: #c7d2fe; }
+  .topbar-links a.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px;
+    padding: 16px; background: #1e293b; border-radius: 12px; border: 1px solid #334155;
+  }
+  .filter-group { display: flex; gap: 6px; align-items: center; }
+  .filter-group label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-right: 4px; }
+  .filter-btn {
+    padding: 4px 12px; border-radius: 6px; border: 1px solid #475569;
+    background: transparent; color: #cbd5e1; font-size: 0.8rem; cursor: pointer;
+  }
+  .filter-btn.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .filter-btn:hover:not(.active) { border-color: #818cf8; color: #c7d2fe; }
+
+  .progress {
+    font-size: 0.85rem; color: #94a3b8; margin-left: auto;
+  }
+  .progress strong { color: #a5b4fc; }
+
+  .chapter-heading {
+    font-size: 1.4rem; margin: 32px 0 16px; color: #f8fafc;
+    padding-bottom: 8px; border-bottom: 1px solid #334155;
+  }
+
+  .question {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  .question.hidden { display: none; }
+
+  .q-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .q-id { font-weight: 700; color: #a5b4fc; font-size: 0.9rem; }
+  .tag {
+    padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .tag-E { background: #064e3b; color: #6ee7b7; }
+  .tag-M { background: #78350f; color: #fbbf24; }
+  .tag-H { background: #7f1d1d; color: #fca5a5; }
+  .tag-type { background: #1e3a8a; color: #93c5fd; }
+
+  .q-prompt { margin-bottom: 12px; }
+  .q-prompt p { margin-bottom: 6px; }
+  .q-prompt code { background: #0f172a; padding: 1px 5px; border-radius: 3px; color: #fbbf24; font-size: 0.9em; }
+  .q-prompt table { border-collapse: collapse; margin: 8px 0; font-size: 0.88rem; }
+  .q-prompt table th, .q-prompt table td {
+    border: 1px solid #334155; padding: 6px 10px; text-align: left;
+  }
+  .q-prompt table th { background: #0f172a; color: #c7d2fe; }
+
+  .options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .option {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 14px; border-radius: 8px;
+    border: 1px solid #334155; background: #0f172a;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .option:hover:not(.locked) { border-color: #6366f1; background: #1e1b4b; }
+  .option.selected { border-color: #6366f1; background: #312e81; }
+  .option.correct { border-color: #10b981; background: #064e3b; color: #a7f3d0; }
+  .option.wrong { border-color: #ef4444; background: #7f1d1d; color: #fecaca; }
+  .option.missed { border-color: #10b981; background: #064e3b40; color: #6ee7b7; border-style: dashed; }
+  .option.locked { cursor: default; }
+  .option-letter { font-weight: 700; color: #a5b4fc; min-width: 20px; }
+  .option.correct .option-letter, .option.missed .option-letter { color: #34d399; }
+  .option.wrong .option-letter { color: #f87171; }
+
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid #475569;
+    background: transparent; color: #cbd5e1; font-size: 0.85rem;
+    cursor: pointer; font-weight: 500;
+  }
+  .btn:hover { border-color: #818cf8; color: #c7d2fe; }
+  .btn-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .btn-primary:hover { background: #4338ca; border-color: #4338ca; color: #fff; }
+  .btn-reset { color: #94a3b8; }
+
+  .reveal {
+    margin-top: 14px; padding: 14px 16px;
+    background: #0f172a; border-left: 4px solid #6366f1; border-radius: 6px;
+    display: none; animation: fadeIn 0.25s ease-out;
+  }
+  .reveal.show { display: block; }
+  .reveal.correct-banner { border-left-color: #10b981; }
+  .reveal.wrong-banner { border-left-color: #ef4444; }
+  .reveal-title { font-weight: 700; margin-bottom: 6px; color: #c7d2fe; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+  .reveal-title.correct { color: #6ee7b7; }
+  .reveal-title.wrong { color: #fca5a5; }
+  .reveal-body { color: #cbd5e1; font-size: 0.95rem; }
+  .reveal-body code { background: #1e293b; padding: 1px 5px; border-radius: 3px; color: #fbbf24; }
+
+  .text-answer {
+    width: 100%; min-height: 80px; padding: 10px; margin-bottom: 12px;
+    background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+    color: #e2e8f0; font-family: inherit; font-size: 0.95rem; resize: vertical;
+  }
+  .text-answer:focus { outline: none; border-color: #6366f1; }
+
+  .match-pairs, .order-list { margin-bottom: 12px; }
+  .match-row, .order-row {
+    display: flex; gap: 10px; align-items: center; padding: 8px 12px;
+    background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+    margin-bottom: 6px; font-size: 0.92rem;
+  }
+  .match-row strong { color: #a5b4fc; min-width: 30px; }
+  .order-row .drag-handle { color: #64748b; cursor: grab; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-break { height: 1px; background: #334155; margin: 40px 0 24px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>CS462 IoT — Practice Questions</h1>
+  <div class="topbar-links">
+    <a href="index.html">Flashcards</a>
+    <a href="study-notes.html">Study Notes</a>
+    <a href="questions.html" class="active">Questions</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="filters">
+    <div class="filter-group">
+      <label>Chapter</label>
+      <button class="filter-btn active" data-filter-chapter="all">All</button>
+      <button class="filter-btn" data-filter-chapter="1">1</button>
+      <button class="filter-btn" data-filter-chapter="2">2</button>
+      <button class="filter-btn" data-filter-chapter="3">3</button>
+      <button class="filter-btn" data-filter-chapter="4">4</button>
+      <button class="filter-btn" data-filter-chapter="5">5</button>
+      <button class="filter-btn" data-filter-chapter="6">6</button>
+      <button class="filter-btn" data-filter-chapter="7">7</button>
+      <button class="filter-btn" data-filter-chapter="8">8</button>
+      <button class="filter-btn" data-filter-chapter="9">9</button>
+      <button class="filter-btn" data-filter-chapter="SD">SD</button>
+    </div>
+    <div class="filter-group">
+      <label>Difficulty</label>
+      <button class="filter-btn active" data-filter-diff="all">All</button>
+      <button class="filter-btn" data-filter-diff="E">Easy</button>
+      <button class="filter-btn" data-filter-diff="M">Med</button>
+      <button class="filter-btn" data-filter-diff="H">Hard</button>
+    </div>
+    <div class="progress">Answered: <strong id="answered-count">0</strong> / <span id="total-count">0</span> · Correct: <strong id="correct-count">0</strong></div>
+  </div>
+
+  <div id="questions-root"></div>
+</div>
+
+<script>
+// ============= QUESTION DATA =============
+const QUESTIONS = [
+  // ---- Chapter 1 ----
+  { id:"Q1.1", ch:"1", diff:"E", type:"MCQ",
+    prompt: "Which of the following is NOT one of the three core elements of IoT?",
+    options: ["Things","Connectivity","Sense-making","Virtualization"],
+    correct: [3],
+    explain: "The three core elements are Things, Connectivity, and Sense-making. Virtualization is not one of them." },
+
+  { id:"Q1.2", ch:"1", diff:"E", type:"T/F",
+    prompt: "An IoT system where devices only communicate with each other locally, without using the Internet, should still be called an <em>Internet</em> of Things.",
+    options: ["True","False"],
+    correct: [1],
+    explain: "False. Without Internet connectivity it's an <strong>Intranet</strong> of Things." },
+
+  { id:"Q1.3", ch:"1", diff:"M", type:"MRQ",
+    prompt: "Which of the following are typical IoT benefits? <em>(Select all that apply)</em>",
+    options: ["Predictive insights from historical data","Automatic elimination of network latency","Continuous automated security monitoring","Zero-power operation regardless of hardware","Faster restocking and customer service"],
+    correct: [0,2,4],
+    explain: "IoT enables predictive insights, automated monitoring, and customer-service improvements. It doesn't eliminate latency or remove power constraints." },
+
+  { id:"Q1.4", ch:"1", diff:"E", type:"FIB",
+    prompt: "IoT data is often ______ data — data points paired with timestamps.",
+    answer: "time-series",
+    explain: "Time-series data. Sensor readings are almost always timestamped for ordering, trend analysis, and replay." },
+
+  { id:"Q1.5", ch:"1", diff:"M", type:"SA",
+    prompt: "Explain in 2–3 sentences <em>why</em> IoT only became commercially viable in the last ~15 years, referencing hardware trends.",
+    answer: "Computing chips became small and cheap enough to embed in ordinary objects (toothbrushes, fridges, etc.). This miniaturization + falling cost, plus ubiquitous wireless networks, made it commercially viable to connect everyday things to the internet." },
+
+  { id:"Q1.6", ch:"1", diff:"M", type:"SA",
+    prompt: "Give one example each of how IoT is applied in: (a) connected cars, (b) smart cities, (c) industrial IoT.",
+    answer: "(a) Dashcams, fuel monitoring, accident alerts, breakdown prediction. (b) Air-quality monitoring, smart street lighting, parking management. (c) Predictive maintenance in factories, wearable safety devices, supply-chain tracking." },
+
+  // ---- Chapter 2 ----
+  { id:"Q2.1", ch:"2", diff:"E", type:"MCQ",
+    prompt: "A \"thing\" in IoT is best defined as:",
+    options: ["Any internet-connected computer","A physical object augmented with an embedded device that monitors it","A sensor wired to a microcontroller","Any object that has a QR code sticker"],
+    correct: [1],
+    explain: "Thing = physical object + embedded device monitoring it. The embedded device provides sensing, control, computation, networking." },
+
+  { id:"Q2.2", ch:"2", diff:"E", type:"MATCH",
+    prompt: "Match each sensor type to an example:",
+    pairs: [
+      {left:"1. Environmental", right:"C. Light sensor"},
+      {left:"2. Position", right:"D. Accelerometer"},
+      {left:"3. Vision", right:"B. LIDAR"},
+      {left:"4. Chemical", right:"E. Gas sensor"},
+      {left:"5. Acoustic", right:"A. Microphone"}
+    ],
+    explain: "Environmental→light/temp, Position→GPS/accelerometer, Vision→camera/LIDAR, Chemical→gas/bio, Acoustic→microphone." },
+
+  { id:"Q2.3", ch:"2", diff:"M", type:"ORDER",
+    prompt: "Put the steps of sensor selection in the correct order:",
+    items: [
+      "Identify what contextual information you need to sense",
+      "Decide which sensor modality can detect that context",
+      "Check sensor specifications (range, accuracy, periodic vs event-driven)",
+      "Consider budget, compliance, lead time, maintenance"
+    ],
+    explain: "(1) Context → (2) Modality → (3) Specs → (4) Other considerations. Always start from what you need to sense, not from the sensor catalog." },
+
+  { id:"Q2.4", ch:"2", diff:"M", type:"MCQ",
+    prompt: "A retail store wants to push promotions to customers' phones as they walk past specific aisles. Which beacon configuration fits best?",
+    options: ["Fixed Beacons, Mobile Receivers","Mobile Beacons, Fixed Receivers","Mobile Beacons, Mobile Receivers","Fixed Beacons, Fixed Receivers"],
+    correct: [0],
+    explain: "Beacons stay fixed in the aisles; customers' phones (mobile receivers) pick up the signal and trigger the promo." },
+
+  { id:"Q2.5", ch:"2", diff:"M", type:"SA",
+    prompt: "Explain what RSSI is and how it enables proximity estimation with BLE beacons.",
+    answer: "RSSI (Received Signal Strength Indicator) is the measured power of a received signal. Because signal strength decreases with distance from the transmitter, a receiver can use RSSI as a rough estimate of how far away the beacon is." },
+
+  { id:"Q2.6", ch:"2", diff:"H", type:"MRQ",
+    prompt: "Which statements about passive RFID vs BLE are correct?",
+    options: [
+      "Passive RFID has lower power consumption than BLE",
+      "BLE supports two-way communication; passive RFID does not",
+      "BLE can do continuous scanning; passive RFID cannot",
+      "Passive RFID has larger storage capacity than active RFID",
+      "Both are considered cost-effective"
+    ],
+    correct: [1,2,3,4],
+    explain: "Both are \"Low\" power — neither clearly lower (A false). BLE has two-way and continuous scanning (B, C true). Passive RFID 4–8 KB > Active 2 KB (D true). Both cost-effective (E true)." },
+
+  { id:"Q2.7", ch:"2", diff:"E", type:"FIB",
+    prompt: "GPS provides ______-time tracking but is NOT considered cost-effective compared to BLE or RFID.",
+    answer: "real",
+    explain: "Real-time tracking. GPS gives live location but is power-hungry and expensive." },
+
+  { id:"Q2.8", ch:"2", diff:"H", type:"SA",
+    prompt: "A museum wants visitors to automatically receive exhibit information on their phones as they walk near each exhibit. Compare BLE beacons vs QR codes for this use case — pick one and justify with at least three specific criteria.",
+    answer: "BLE beacons win. (1) Passive for the visitor — no scanning action required; (2) ranging/proximity detects closeness automatically; (3) low power means beacons run on coin cells for years; (4) two-way communication allows interactive content. QR requires the visitor to take out their phone and frame each code." },
+
+  // ---- Chapter 3 ----
+  { id:"Q3.1", ch:"3", diff:"E", type:"ORDER",
+    prompt: "Order the TCP/IP layers from top (application) to bottom (physical):",
+    items: ["Application","Transport","Network","Link","Physical"],
+    explain: "Application → Transport → Network → Link → Physical. Each layer only talks to the one directly above/below it." },
+
+  { id:"Q3.2", ch:"3", diff:"E", type:"MCQ",
+    prompt: "Which layer is responsible for assigning addresses and routing packets across networks?",
+    options: ["Application","Transport","Network","Link"],
+    correct: [2],
+    explain: "The Network layer (IP) handles addressing and routing across networks. Transport delivers to processes; Link handles a single hop." },
+
+  { id:"Q3.3", ch:"3", diff:"M", type:"MATCH",
+    prompt: "Match each HTTP method to its REST purpose:",
+    pairs: [
+      {left:"1. GET", right:"B. Retrieve data"},
+      {left:"2. POST", right:"A. Create new data"},
+      {left:"3. PUT", right:"D. Update existing data"},
+      {left:"4. DELETE", right:"C. Remove data"}
+    ],
+    explain: "GET=read, POST=create, PUT=update, DELETE=delete." },
+
+  { id:"Q3.4", ch:"3", diff:"M", type:"T/F",
+    prompt: "HTTP is stateful — the server remembers each client's previous requests automatically.",
+    options: ["True","False"],
+    correct: [1],
+    explain: "False. HTTP is stateless. Session state must be explicitly carried (e.g., cookies, tokens)." },
+
+  { id:"Q3.5", ch:"3", diff:"M", type:"SA",
+    prompt: "Explain what \"packetization\" means and why it's important for networks.",
+    answer: "Packetization splits data into small packets, each with headers (metadata like destination address) and payload (actual content). It enables routing through different paths, retransmission of only lost packets, and multiplexing of many flows over one link." },
+
+  { id:"Q3.6", ch:"3", diff:"H", type:"SA",
+    prompt: "Give one reason HTTP REST is a poor fit for battery-powered sensors sending small updates every few seconds.",
+    answer: "High per-request overhead: verbose text headers, TCP handshake setup/teardown per call, and stateless re-authentication. Over time this consumes far more energy and bandwidth than MQTT's persistent connection with compact binary messages." },
+
+  // ---- Chapter 4 ----
+  { id:"Q4.1", ch:"4", diff:"E", type:"MCQ",
+    prompt: "MQTT uses which communication pattern?",
+    options: ["Client–server request/response","Publish–subscribe via a broker","Peer-to-peer flooding","Direct device-to-device"],
+    correct: [1],
+    explain: "MQTT is pub/sub: publishers send to a broker; broker routes to subscribers." },
+
+  { id:"Q4.2", ch:"4", diff:"E", type:"MRQ",
+    prompt: "Which are the three types of decoupling in pub/sub?",
+    options: ["Space decoupling","Protocol decoupling","Time decoupling","Synchronization decoupling","Payload decoupling"],
+    correct: [0,2,3],
+    explain: "Space (no IP/port knowledge), Time (not simultaneously online), Synchronization (publisher doesn't wait for subscriber)." },
+
+  { id:"Q4.3", ch:"4", diff:"M", type:"MCQ",
+    prompt: "Which MQTT QoS level uses the PUBREC → PUBREL → PUBCOMP handshake?",
+    options: ["QoS 0","QoS 1","QoS 2","Retained QoS"],
+    correct: [2],
+    explain: "QoS 2 (exactly once) uses the four-part handshake: PUBLISH → PUBREC → PUBREL → PUBCOMP." },
+
+  { id:"Q4.4", ch:"4", diff:"M", type:"MCQ",
+    prompt: "A publisher sends with QoS 2; a subscriber subscribed with QoS 0. What QoS does the broker use when delivering to that subscriber?",
+    options: ["QoS 0","QoS 1","QoS 2","Depends on retained flag"],
+    correct: [0],
+    explain: "Broker uses the LOWER of publisher's and subscriber's QoS for delivery. min(2,0) = 0." },
+
+  { id:"Q4.5", ch:"4", diff:"M", type:"FIB",
+    prompt: "The MQTT wildcard <code>+</code> matches ___ level(s), while <code>#</code> matches ___ level(s) and must appear as the ___ character of the topic.",
+    answer: "one, all remaining (or all), last",
+    explain: "<code>+</code> = single-level wildcard (one). <code>#</code> = multi-level (all remaining) and must be the last character of the topic." },
+
+  { id:"Q4.6", ch:"4", diff:"M", type:"MRQ",
+    prompt: "Which are valid MQTT topic best practices?",
+    options: [
+      "Start topics with a leading `/`",
+      "Keep topics short",
+      "Use spaces to separate levels",
+      "Embed Client ID for authorization",
+      "Subscribe to `#` for easy debugging in production",
+      "Design for extensibility"
+    ],
+    correct: [1,3,5],
+    explain: "No leading `/`, no spaces, never subscribe to `#` in production (bandwidth killer). Keep topics short, embed client ID, and design for extensibility." },
+
+  { id:"Q4.7", ch:"4", diff:"H", type:"SA",
+    prompt: "A smart-lock sensor publishes its state and disappears from the network due to a power outage. Other devices need to know immediately that the lock is offline. Which MQTT features accomplish this, and how do they interact?",
+    answer: "Last Will and Testament. The lock specifies its will message (topic + payload) when connecting. If it disconnects ungracefully — TCP drop without a DISCONNECT frame — the broker publishes the will to subscribers of that topic, notifying them of the unexpected offline." },
+
+  { id:"Q4.8", ch:"4", diff:"H", type:"SA",
+    prompt: "A campus-wide broadcast must reach devices that are currently offline (receiving it the moment they reconnect), exactly once, without duplicates. Which MQTT features would you combine? Briefly justify each.",
+    answer: "(1) Retained Messages — the broker stores the last message per topic so late-joining subscribers receive it immediately. (2) QoS 2 — guarantees exactly-once delivery, preventing duplicates. (3) Persistent Sessions — offline subscribers catch up on missed QoS ≥1 messages when they reconnect." },
+
+  { id:"Q4.9", ch:"4", diff:"M", type:"MATCH",
+    prompt: "Match each MQTT communication pattern to its example:",
+    pairs: [
+      {left:"1. Point-to-point", right:"B. Occupancy sensor publishes to sensor/occupancy/room7; one display subscribes"},
+      {left:"2. Broadcast", right:"A. Weather station publishes to dt/us/NY/weather; all trucks subscribe"},
+      {left:"3. Fan-in", right:"C. Air-quality sensors publish per-zone; one aggregator uses + wildcard"}
+    ],
+    explain: "Point-to-point = one-to-one topic. Broadcast = one publisher to many subscribers via same topic. Fan-in = many publishers → one subscriber via wildcards." },
+
+  { id:"Q4.10", ch:"4", diff:"H", type:"MCQ",
+    prompt: "Shared subscriptions (<code>$share/GROUP/TOPIC</code>) are primarily useful for:",
+    options: ["Reducing broker memory footprint","Load-balancing high-rate messages across a group of subscribers","Broadcasting retained messages","Encrypting topic names"],
+    correct: [1],
+    explain: "Shared subscriptions round-robin messages across clients in the same group — a load-balancer for high-rate topics." },
+
+  { id:"Q4.11", ch:"4", diff:"E", type:"T/F",
+    prompt: "Wildcards (<code>+</code> and <code>#</code>) can be used when publishing, not just when subscribing.",
+    options: ["True","False"],
+    correct: [1],
+    explain: "False. Wildcards are subscribe-only. Publishing must always use a concrete topic." },
+
+  // ---- Chapter 5 ----
+  { id:"Q5.1", ch:"5", diff:"E", type:"MATCH",
+    prompt: "Match data characteristic to best visualization:",
+    pairs: [
+      {left:"1. Categorical", right:"B. Pie"},
+      {left:"2. Ordinal", right:"C. Bar/column"},
+      {left:"3. Continuous", right:"A. Line/progression"}
+    ],
+    explain: "Categorical→pie (parts-of-whole), Ordinal→bars (discrete ordered), Continuous→lines (spans over time)." },
+
+  { id:"Q5.2", ch:"5", diff:"M", type:"MCQ",
+    prompt: "A heatmap is best described as:",
+    options: ["A single-value dial","Histograms over time, showing trend patterns","A map with pins","A sequence of boxes representing discrete states"],
+    correct: [1],
+    explain: "A heatmap shows density/value across two axes — essentially histograms over time, useful for patterns like usage by hour/day." },
+
+  { id:"Q5.3", ch:"5", diff:"M", type:"MRQ",
+    prompt: "Ways to combat alert fatigue include:",
+    options: [
+      "Setting intelligent thresholds",
+      "Making every alert critical to force attention",
+      "Using tiered priorities (e.g., red+voice for urgent, amber text for advisory)",
+      "Making alerts actionable with clear next steps",
+      "Firing alerts at fixed intervals regardless of data"
+    ],
+    correct: [0,2,3],
+    explain: "Thresholds, tiered priorities, and actionable messages combat fatigue. Flooding or constant-interval alerts cause it." },
+
+  { id:"Q5.4", ch:"5", diff:"M", type:"FIB",
+    prompt: "Translating data into visual form using attributes like color, shape, size, position, and length is called ____ ____.",
+    answer: "visual encoding",
+    explain: "Visual encoding." },
+
+  { id:"Q5.5", ch:"5", diff:"M", type:"SA",
+    prompt: "Why should color alone never be used to express meaning in an accessible visualization? Give one practical alternative.",
+    answer: "Color-blind users and those viewing in low-contrast conditions can't reliably distinguish color. Always reinforce with another cue — icons, shape, labels, or patterns." },
+
+  { id:"Q5.6", ch:"5", diff:"H", type:"SA",
+    prompt: "You need a dashboard showing: (a) current temperature in a room, (b) machine state over the past week, (c) proportion of energy consumed by each appliance. Choose an appropriate chart type for each and briefly justify.",
+    answer: "(a) Stat — single key metric at a glance. (b) State timeline — duration bars show how states changed over time. (c) Pie chart — part-to-whole proportions." },
+
+  // ---- Chapter 6 ----
+  { id:"Q6.1", ch:"6", diff:"E", type:"MCQ",
+    prompt: "The principle \"lean data at edge, enrich in cloud\" primarily saves:",
+    options: ["CPU cycles on the cloud","Device storage and transmission energy","Broker subscriptions","IP addresses"],
+    correct: [1],
+    explain: "Keeping data compact at the edge saves device storage and the energy cost of transmitting verbose data." },
+
+  { id:"Q6.2", ch:"6", diff:"M", type:"MATCH",
+    prompt: "Match each design pattern to its core idea:",
+    pairs: [
+      {left:"1. Command", right:"B. No action deemed successful unless acknowledged"},
+      {left:"2. Device Bootstrap", right:"A. Two-phase credential upgrade from short-lived to long-lived"},
+      {left:"3. Device State Replica", right:"C. Maintain current + desired + delta, sync via messaging topics"},
+      {left:"4. Gateway", right:"D. Relay messages between devices and cloud when no direct Internet"},
+      {left:"5. Telemetry Archiving", right:"E. Store raw data supporting in-order replay"}
+    ],
+    explain: "These are the five core patterns for reliable IoT architectures." },
+
+  { id:"Q6.3", ch:"6", diff:"M", type:"ORDER",
+    prompt: "Order the Software Update Pattern steps:",
+    items: [
+      "Device subscribes to state/deviceID/update/delta",
+      "Application publishes desired state with software URL",
+      "Replica publishes delta containing new software URL",
+      "Device downloads and applies new software",
+      "Device publishes ack with new version to state/deviceID/update"
+    ],
+    explain: "Subscribe → Publish desired → Delta → Download/apply → Ack. It combines Command + Device State Replica patterns." },
+
+  { id:"Q6.4", ch:"6", diff:"M", type:"SA",
+    prompt: "In the MVC device software pattern, why should the View never read directly from the hardware? What component is it supposed to read from instead?",
+    answer: "Hardware reads are owned by the Model (via the HAL). If Views read hardware directly, hardware changes break every View. The View should read from the Model — so multiple views (LEDs, JSON, UI) can coexist and hardware swaps only require updating the HAL." },
+
+  { id:"Q6.5", ch:"6", diff:"H", type:"MRQ",
+    prompt: "A \"Zero Trust\" approach to IoT security implies:",
+    options: [
+      "Devices automatically trust other devices on the same LAN",
+      "Every access request is verified regardless of source",
+      "A compromised device should have minimal blast radius via least-privilege topic permissions",
+      "Broker credentials are shared across all devices for simplicity",
+      "Session tokens expire and must be re-negotiated"
+    ],
+    correct: [1,2,4],
+    explain: "Zero Trust = verify every request, assume compromise, minimize privileges, rotate credentials. Never trust by location; never share creds." },
+
+  { id:"Q6.6", ch:"6", diff:"E", type:"FIB",
+    prompt: "A ______ is a regular status message a device sends to prove it is alive, enabling detection of silently-offline devices.",
+    answer: "heartbeat",
+    explain: "Heartbeat. Without it, a dead device appears indistinguishable from a quiet-but-healthy one." },
+
+  { id:"Q6.7", ch:"6", diff:"H", type:"SA",
+    prompt: "Why must the bootstrapping server support all firmware versions ever deployed? What failure mode is avoided by this rule?",
+    answer: "Devices in the field may run any firmware version you've ever shipped. If the bootstrap server can't negotiate the old version's protocol, those devices can't re-provision and are effectively bricked. Supporting every version prevents orphaning legacy hardware." },
+
+  // ---- Chapter 7 ----
+  { id:"Q7.1", ch:"7", diff:"E", type:"MCQ",
+    prompt: "LoRa's physical layer uses:",
+    options: ["OFDM","Chirp Spread Spectrum","DSSS with CDMA","FSK on a single channel"],
+    correct: [1],
+    explain: "Chirp Spread Spectrum (CSS). Chirps = signals whose frequency changes over time." },
+
+  { id:"Q7.2", ch:"7", diff:"M", type:"T/F",
+    prompt: "A high Spreading Factor increases range and resilience to interference but also increases airtime and energy consumption per message.",
+    options: ["True","False"],
+    correct: [0],
+    explain: "True. High SF → slow frequency change → longer range + more robustness, but longer airtime and more energy." },
+
+  { id:"Q7.3", ch:"7", diff:"M", type:"MATCH",
+    prompt: "Match each LoRaWAN class to its behavior:",
+    pairs: [
+      {left:"1. Class A", right:"B. Two short RX windows after each uplink; server can only send after device"},
+      {left:"2. Class B", right:"C. Predictable ping slots, beacons every 128s for time sync"},
+      {left:"3. Class C", right:"A. Receive window continuously open except during transmission"}
+    ],
+    explain: "A: lowest power, highest latency. B: medium. C: highest power, lowest latency." },
+
+  { id:"Q7.4", ch:"7", diff:"E", type:"FIB",
+    prompt: "LoRaWAN uses two encryption keys: a 128-bit ______ Session Key and a 128-bit ______ Session Key.",
+    answer: "Network, Application",
+    explain: "Network Session Key (device↔network server) + Application Session Key (end-to-end app layer). Enables multi-tenant shared networks." },
+
+  { id:"Q7.5", ch:"7", diff:"M", type:"MCQ",
+    prompt: "Uplink messages in LoRaWAN are:",
+    options: [
+      "Received by exactly one gateway and forwarded once",
+      "Received by all in-range gateways; network server deduplicates",
+      "Queued at the device until a gateway ACKs",
+      "Broadcast by the network server to all devices"
+    ],
+    correct: [1],
+    explain: "All in-range gateways forward the same packet; the network server deduplicates. This improves reliability." },
+
+  { id:"Q7.6", ch:"7", diff:"H", type:"SA",
+    prompt: "A farmer's soil-moisture sensor transmits 8-byte readings once per hour on batteries lasting 5+ years, ~2 km from the nearest gateway. Justify why Class A with a high spreading factor is appropriate, and identify one real-world constraint (e.g., regulation) that shapes the choice.",
+    answer: "Class A has the lowest power draw — essential for 5+ year battery life. High SF extends range to reach a gateway 2 km away through obstacles. The hourly 8-byte cadence fits well within regulatory duty-cycle limits (typically 1% in LoRa-regulated bands), which cap how often a device may transmit regardless of battery." },
+
+  { id:"Q7.7", ch:"7", diff:"M", type:"MCQ",
+    prompt: "Activation-by-Personalization (ABP) is preferred when:",
+    options: [
+      "A consumer buys a device off the shelf",
+      "A device is deployed directly to a known factory's network",
+      "The device roams between operators",
+      "OTA join-keys are unavailable"
+    ],
+    correct: [1],
+    explain: "ABP hard-codes network session keys, appropriate only when you know the target network at provisioning time. OTA is for consumer/roaming cases." },
+
+  { id:"Q7.8", ch:"7", diff:"E", type:"T/F",
+    prompt: "A 1% duty cycle means a device may transmit up to 1 second out of every 100 seconds.",
+    options: ["True","False"],
+    correct: [0],
+    explain: "True. Duty cycle = fraction of time transmitting. 1s / 100s = 1%." },
+
+  // ---- Chapter 8 ----
+  { id:"Q8.1", ch:"8", diff:"E", type:"MRQ",
+    prompt: "Which are features of Thread?",
+    options: [
+      "IP-based networking with every device getting an IP address",
+      "Mesh topology that self-heals",
+      "Requires a central cloud server to route traffic",
+      "All communication encrypted",
+      "Uses spread spectrum at the physical layer"
+    ],
+    correct: [0,1,3,4],
+    explain: "Thread is IP-based, mesh, encrypted, spread-spectrum. It's local-first — no cloud required to route." },
+
+  { id:"Q8.2", ch:"8", diff:"M", type:"MATCH",
+    prompt: "Match Thread device subtype to description:",
+    pairs: [
+      {left:"1. Router", right:"B. Actively forwards messages, never sleeps"},
+      {left:"2. REED", right:"C. Can become a Router when the network needs one"},
+      {left:"3. Full End Device", right:"D. Can never be a router; radio always on"},
+      {left:"4. Minimal End Device", right:"E. End device that cannot be promoted; radio always on"},
+      {left:"5. Sleepy End Device (SED)", right:"A. Radio off during idle, polls parent periodically"}
+    ],
+    explain: "FTD subtypes: Router, REED, Full End Device. MTD subtypes: Minimal End Device, Sleepy End Device." },
+
+  { id:"Q8.3", ch:"8", diff:"M", type:"MCQ",
+    prompt: "The Thread Leader:",
+    options: [
+      "Is manually configured at deployment time",
+      "Is dynamically elected; there is one per partition",
+      "Is always the Border Router",
+      "Must be a Sleepy End Device"
+    ],
+    correct: [1],
+    explain: "The Leader is dynamically elected among Routers — one per network partition." },
+
+  { id:"Q8.4", ch:"8", diff:"E", type:"FIB",
+    prompt: "In Thread, the maximum number of Routers per network is ____; if the current count drops below ____, REEDs auto-promote.",
+    answer: "32, 16",
+    explain: "Max 32 Routers; target range 16–23. Below 16, REEDs auto-promote." },
+
+  { id:"Q8.5", ch:"8", diff:"H", type:"ORDER",
+    prompt: "Order the steps by which a Child upgrades itself into a Router:",
+    items: [
+      "Child sends Address Solicit to Leader",
+      "Leader responds with a Router ID",
+      "New Router multicasts MLE Link Request to neighbors",
+      "Neighbors reply with Link Accept and Request",
+      "New Router sends unicast Link Accept to establish bi-directional links"
+    ],
+    explain: "Solicit → Router ID assigned → MLE Link Request → Link Accept and Request → unicast Link Accept." },
+
+  { id:"Q8.6", ch:"8", diff:"M", type:"SA",
+    prompt: "Define the Connected Dominating Set (CDS) and state the two invariants it must maintain in a Thread network.",
+    answer: "The CDS is the set of Routers forming the backbone. Invariants: (1) any Router can reach any other Router via Router-only paths; (2) every End Device is directly connected to at least one Router." },
+
+  { id:"Q8.7", ch:"8", diff:"M", type:"MATCH",
+    prompt: "Match each Thread IPv6 address type to its use:",
+    pairs: [
+      {left:"1. LLA", right:"B. Discovering neighbors, configuring links"},
+      {left:"2. ML-EID", right:"A. Identifies an interface independent of topology (apps)"},
+      {left:"3. RLOC", right:"C. Changes with topology; used by routing protocol"}
+    ],
+    explain: "LLA=neighbor discovery, ML-EID=stable app-layer ID, RLOC=topology-dependent routing locator." },
+
+  { id:"Q8.8", ch:"8", diff:"H", type:"T/F",
+    prompt: "If a Thread network splits into two partitions, both partitions eventually form distinct networks with different security credentials that cannot merge.",
+    options: ["True","False"],
+    correct: [1],
+    explain: "False. Partitions share the same credentials and automatically merge when connectivity is restored." },
+
+  // ---- Chapter 9 ----
+  { id:"Q9.1", ch:"9", diff:"E", type:"MCQ",
+    prompt: "Matter runs on top of which networking technologies?",
+    options: ["Only Wi-Fi","Only Thread","Wi-Fi, Ethernet, and Thread","Zigbee and Z-Wave only"],
+    correct: [2],
+    explain: "Matter is an application-layer protocol running over Wi-Fi, Ethernet, and Thread. It can bridge to others (Zigbee/Z-Wave) but doesn't run on them natively." },
+
+  { id:"Q9.2", ch:"9", diff:"M", type:"ORDER",
+    prompt: "Order the Matter data model hierarchy from broadest to narrowest:",
+    items: ["Node","Endpoint","Cluster","Attribute"],
+    explain: "Node → Endpoint → Cluster → Attribute/Command/Event." },
+
+  { id:"Q9.3", ch:"9", diff:"M", type:"MATCH",
+    prompt: "Match each concept to its Matter definition:",
+    pairs: [
+      {left:"1. Node", right:"B. Unique addressable resource on the network"},
+      {left:"2. Endpoint", right:"D. Feature set on a Node"},
+      {left:"3. Cluster", right:"A. Groups specific functionality (e.g., On/Off)"},
+      {left:"4. Attribute", right:"E. Current state/value (e.g., Lock State = \"locked\")"},
+      {left:"5. Command", right:"C. Action to perform (e.g., \"Lock Door\")"}
+    ],
+    explain: "Data model hierarchy with concrete roles." },
+
+  { id:"Q9.4", ch:"9", diff:"E", type:"FIB",
+    prompt: "In Matter, ______ 0 is reserved for Utility Clusters (discovery, diagnostics, OTA).",
+    answer: "Endpoint",
+    explain: "Endpoint 0 hosts the Utility Clusters." },
+
+  { id:"Q9.5", ch:"9", diff:"M", type:"MCQ",
+    prompt: "A Matter Controller first uses which technology during commissioning to pass network credentials?",
+    options: ["Zigbee","BLE","Thread","NFC"],
+    correct: [1],
+    explain: "BLE is used during commissioning to securely hand off network creds; once joined, the device switches to IPv6 over Wi-Fi/Thread." },
+
+  { id:"Q9.6", ch:"9", diff:"H", type:"SA",
+    prompt: "Describe the intercept attack scenario that Timed Transactions defend against, and explain the timeout's role. Why are Timed Transactions recommended only for critical operations?",
+    answer: "Attacker jams/intercepts Alice's message to Bob, collects a second one, then replays the first; the second can be held and replayed later (e.g., \"unlock door\" at attacker's timing). Timed Transactions set a maximum timeout so replayed messages are rejected as expired. They add complexity and round-trips, so they're reserved for high-impact ops like locks or garage doors." },
+
+  { id:"Q9.7", ch:"9", diff:"M", type:"MRQ",
+    prompt: "Which are valid Matter transaction types?",
+    options: ["Read","Invoke","Forward","Subscribe","Write"],
+    correct: [0,1,3,4],
+    explain: "Read, Subscribe, Write, Invoke. Forward is not a Matter transaction type." },
+
+  { id:"Q9.8", ch:"9", diff:"H", type:"SA",
+    prompt: "Why does the Thread Border Router only forward selected multicast traffic from Wi-Fi into the Thread mesh, rather than bridging all multicast transparently?",
+    answer: "Thread's bandwidth is orders of magnitude less than Wi-Fi. Blindly bridging all Wi-Fi multicast would flood the Thread mesh and starve real traffic. The Border Router publishes only relevant multicast (e.g., mDNS for Thread Nodes) and filters the rest." },
+
+  { id:"Q9.9", ch:"9", diff:"E", type:"T/F",
+    prompt: "A Matter Node can only belong to a single Fabric at a time.",
+    options: ["True","False"],
+    correct: [1],
+    explain: "False. Multi-Admin allows a Node to belong to multiple Fabrics (e.g., both Google Home's and Apple Home's)." },
+
+  { id:"Q9.10", ch:"9", diff:"M", type:"MCQ",
+    prompt: "The \"popcorn effect\" in Matter refers to:",
+    options: [
+      "Repeated retransmissions of lost packets",
+      "Visible sequential delays when individually commanding many devices; solved by Groups",
+      "Devices rapidly cycling between sleep and wake states",
+      "BLE pairing attempts colliding with Thread beacons"
+    ],
+    correct: [1],
+    explain: "Popcorn effect: sending commands one-by-one creates visible delays (like popcorn popping in sequence). Groups + multicast commands solve it." },
+
+  // ---- System Design Scenarios ----
+  { id:"S1", ch:"SD", diff:"M", type:"SD",
+    prompt: "<strong>Smart Campus Environmental Monitoring.</strong> Design an end-to-end system that deploys ~200 battery-powered air-quality sensors across a university campus. Required: real-time dashboard, historical replay, alerting on threshold breaches, and sensor firmware updates.<br><br>1. Which connectivity technology would you use for the sensors, and why?<br>2. Design the MQTT topic hierarchy. Give 3 example topic strings.<br>3. Which design patterns from Chapter 6 apply? Name at least three and state how each is used.<br>4. What QoS level(s) would you choose for telemetry vs alerts vs config updates? Justify each.<br>5. How would you visualize: (a) a live reading, (b) air-quality patterns by hour over the past month, (c) recent critical alerts?",
+    answer: "<strong>1.</strong> LoRaWAN (battery life, outdoor range) or Thread (if building coverage exists). Cellular if isolated pockets. <strong>2.</strong> Topics: <code>campus/soss/L3/r321/airq/pm25</code>, <code>campus/soss/L3/r321/airq/co2</code>, <code>campus/soss/L3/r321/status/heartbeat</code>. Keep short, hierarchical, embed location + metric. <strong>3.</strong> Telemetry (per-sensor publishes), Telemetry Archiving (raw storage for replay), Software Update (firmware OTA via Device State Replica + Command), Device Bootstrap (secure provisioning), Gateway (LoRa gateways). <strong>4.</strong> Telemetry QoS 1 (delivery matters but duplicates OK); alerts QoS 2 (exactly once, critical); config updates QoS 2 (exactly once). <strong>5.</strong> (a) Stat, (b) Heatmap of hour × day, (c) Alert list." },
+
+  { id:"S2", ch:"SD", diff:"H", type:"SD",
+    prompt: "<strong>Cold-Chain Logistics.</strong> A pharmaceutical company ships temperature-sensitive vaccines in insulated containers across several countries. Each container has: temperature sensor, GPS, accelerometer. You must detect temperature excursions and delivery location in near-real-time, and provide a replay for audit after delivery.<br><br>1. Compare cellular vs LoRaWAN for this deployment. Pick one and justify considering range, power, payload, and cost.<br>2. How would the Telemetry Archiving Pattern support the audit requirement?<br>3. Design the device state replica to separate \"desired\" (e.g., upper/lower temp thresholds) from \"current\" (latest reading).<br>4. How would you handle the case when the container enters a warehouse with no cellular signal for 8 hours?<br>5. Which MQTT feature ensures a subscriber joining mid-flight immediately sees the last known container status?",
+    answer: "<strong>1.</strong> Cellular (NB-IoT/LTE-M) — cross-border roaming, near-real-time, reasonable power, and needed payload. LoRaWAN requires gateways that can't follow a shipping container. <strong>2.</strong> Raw timestamped readings stored on ingestion; post-delivery, auditors replay the full temp/GPS timeline to verify compliance. <strong>3.</strong> Replica holds desired thresholds (e.g., <code>min=2°C, max=8°C</code>) and current readings. Delta topics let the server push updated thresholds mid-transit. <strong>4.</strong> Device buffers readings locally with timestamps; on reconnect, replays queued telemetry via QoS 1/2 + persistent sessions. <strong>5.</strong> Retained Messages — last status is delivered immediately to new subscribers." },
+
+  { id:"S3", ch:"SD", diff:"H", type:"SD",
+    prompt: "<strong>Smart Home with Matter + Thread.</strong> Design a smart home with: 1 Border Router, 3 always-on devices (smart plugs), 5 Sleepy End Devices (door/window sensors), and 1 smart lock. The owner uses both Google Home and Apple Home.<br><br>1. Explain the role of the Border Router in bridging Thread and Wi-Fi.<br>2. Why are Timed Transactions appropriate for the smart lock but unnecessary for the door sensors?<br>3. How does Multi-Admin (Fabrics) allow both Google Home and Apple Home to control the same lock?<br>4. Describe how the proxy architecture lets the Sleepy End Devices conserve power while still appearing responsive.<br>5. During commissioning of the new lock, describe the protocol handoff — from BLE to IPv6.",
+    answer: "<strong>1.</strong> Border Router auto-configures IPv6 for both networks, publishes mDNS for Thread nodes, forwards only relevant multicast to Thread (avoiding Thread bandwidth exhaustion). <strong>2.</strong> Lock actions are high-impact + security-critical (intercept-replay risk); Timed Transactions reject expired messages. Door sensors just report open/closed; a replayed \"open\" is low-value. <strong>3.</strong> Multi-Admin: the lock is commissioned into both fabrics; each maintains its own credentials; cluster state is shared so both Homes see consistent state. <strong>4.</strong> Full-powered proxy nodes subscribe on behalf of sleeping children; when a controller sends a command, the proxy buffers and forwards at the SED's next wake. <strong>5.</strong> BLE carries network credentials securely during commissioning; once the lock joins Thread/IPv6, BLE is no longer used and all messaging is IPv6." },
+
+  { id:"S4", ch:"SD", diff:"M", type:"SD",
+    prompt: "<strong>Factory Predictive Maintenance.</strong> A factory has 50 industrial machines that must be monitored for vibration, temperature, and current. Predictive ML must run in the cloud; alerts must reach operators in &lt;5 seconds.<br><br>1. Where should the \"edge\" processing happen, and what should be sent to the cloud? Apply \"lean data at edge, enrich in cloud.\"<br>2. Draw out the topic hierarchy using <code>factory/machineID/...</code> with at least 3 leaf topics. Explain how you'd avoid over-specific or over-general topics.<br>3. Which combination of MQTT Retained Messages and Last Will and Testament would give operators a realistic \"is this machine online right now?\" view on the dashboard?<br>4. How would you buffer telemetry if the ingestion system briefly fails? Reference a Chapter 6 principle.<br>5. Name one reliability practice you'd use to test the system before full deployment.",
+    answer: "<strong>1.</strong> Edge computes vibration RMS/FFT features, detects threshold breaches; uploads summaries + anomalies, not raw 10kHz streams. <strong>2.</strong> <code>factory/line5/m12/vibration</code>, <code>factory/line5/m12/temp</code>, <code>factory/line5/m12/current</code>, <code>factory/line5/m12/status/heartbeat</code>. Separate topics per metric (specific) but grouped by machine (extensible). <strong>3.</strong> Retained on <code>.../status/online</code> publishes \"online\" on connect; Last Will publishes \"offline\" to the same topic on ungraceful disconnect. Dashboard subscribes once and always sees the current state. <strong>4.</strong> Buffer with queues (Chapter 6: Reliability) — decouple ingestion from processing so spikes and brief outages don't drop data. <strong>5.</strong> Simulate at production scale: 10% → 25% → 50% → 100% traffic to surface scaling issues before rollout." },
+
+  { id:"S5", ch:"SD", diff:"H", type:"SD",
+    prompt: "<strong>Public Restroom Cleanliness (Wild Card).</strong> A facilities team wants real-time occupancy + odor detection + soap/paper dispenser levels across 40 campus restrooms. Cleaners carry phones. Deployment must be cheap, low-maintenance, and privacy-respecting.<br><br>1. Choose sensors for: occupancy, odor, dispenser fill level. Justify each with the sensor-selection criteria from Chapter 2.<br>2. Which connectivity would you use and why (Wi-Fi, Thread, LoRaWAN, or cellular)? Consider building penetration and power.<br>3. Design a simple MQTT topic tree and describe how cleaner phones subscribe only to their assigned buildings (hint: wildcards).<br>4. How would you avoid alert fatigue on cleaner phones? Reference at least two techniques from Chapter 5.<br>5. Privacy: identify one risk and propose a mitigation.",
+    answer: "<strong>1.</strong> Occupancy: PIR motion sensor (low cost, low power, event-driven). Odor: gas sensor for NH3/H2S (periodic threshold, chemical modality). Dispenser fill: weight or IR distance sensor (periodic, mains or battery). <strong>2.</strong> Thread inside buildings — mesh handles concrete walls, low power for SEDs, IPv6-ready. Gateway uplinks to campus MQTT. <strong>3.</strong> Topics: <code>campus/bldg/B3/rr/M2/occupancy</code>, <code>.../odor</code>, <code>.../dispenser/soap</code>. Cleaner phones subscribe <code>campus/bldg/B3/#</code> for their assigned building. <strong>4.</strong> Tiered priorities (critical vs advisory), actionable messages (\"Refill soap, floor 3\"), intelligent thresholds. <strong>5.</strong> Risk: occupancy sensors could infer individual schedules. Mitigation: no cameras; report aggregate counts with time bucketing; avoid persistent device IDs tied to users." }
+];
+
+// ============= RENDERER =============
+const root = document.getElementById('questions-root');
+const state = {}; // id -> {selected:[], revealed:bool, correct:bool}
+
+const CH_TITLES = {
+  "1":"Chapter 1 — Introduction to IoT",
+  "2":"Chapter 2 — Things and Sensors",
+  "3":"Chapter 3 — TCP/IP & HTTP REST",
+  "4":"Chapter 4 — MQTT",
+  "5":"Chapter 5 — Data Visualization",
+  "6":"Chapter 6 — IoT Architecture & Design",
+  "7":"Chapter 7 — LoRaWAN",
+  "8":"Chapter 8 — Thread",
+  "9":"Chapter 9 — Matter",
+  "SD":"IoT System Design Scenarios"
+};
+
+function letter(i) { return String.fromCharCode(65+i); }
+
+function render() {
+  root.innerHTML = '';
+  let currentCh = null;
+
+  QUESTIONS.forEach(q => {
+    if (q.ch !== currentCh) {
+      currentCh = q.ch;
+      const h = document.createElement('h2');
+      h.className = 'chapter-heading';
+      h.textContent = CH_TITLES[q.ch] || q.ch;
+      h.dataset.chapter = q.ch;
+      root.appendChild(h);
+    }
+    root.appendChild(renderQuestion(q));
+  });
+
+  document.getElementById('total-count').textContent = QUESTIONS.length;
+  updateCounts();
+}
+
+function renderQuestion(q) {
+  state[q.id] = state[q.id] || { selected: [], revealed: false, correct: null };
+  const el = document.createElement('div');
+  el.className = 'question';
+  el.dataset.id = q.id;
+  el.dataset.chapter = q.ch;
+  el.dataset.diff = q.diff;
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'q-header';
+  header.innerHTML = `
+    <span class="q-id">${q.id}</span>
+    <span class="tag tag-${q.diff}">${q.diff === 'E' ? 'Easy' : q.diff === 'M' ? 'Medium' : 'Hard'}</span>
+    <span class="tag tag-type">${q.type}</span>
+  `;
+  el.appendChild(header);
+
+  // Prompt
+  const prompt = document.createElement('div');
+  prompt.className = 'q-prompt';
+  prompt.innerHTML = `<p>${q.prompt}</p>`;
+  el.appendChild(prompt);
+
+  // Body
+  if (q.type === 'MCQ' || q.type === 'T/F') {
+    el.appendChild(renderChoice(q, false));
+  } else if (q.type === 'MRQ') {
+    el.appendChild(renderChoice(q, true));
+  } else if (q.type === 'FIB' || q.type === 'SA' || q.type === 'SD') {
+    el.appendChild(renderText(q));
+  } else if (q.type === 'MATCH') {
+    el.appendChild(renderMatch(q));
+  } else if (q.type === 'ORDER') {
+    el.appendChild(renderOrder(q));
+  }
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  if (q.type === 'MCQ' || q.type === 'T/F' || q.type === 'MRQ') {
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'btn btn-primary';
+    submitBtn.textContent = 'Submit';
+    submitBtn.onclick = () => submitChoice(q, el);
+    actions.appendChild(submitBtn);
+  } else {
+    const showBtn = document.createElement('button');
+    showBtn.className = 'btn btn-primary';
+    showBtn.textContent = 'Show Answer';
+    showBtn.onclick = () => showTextAnswer(q, el);
+    actions.appendChild(showBtn);
+  }
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'btn btn-reset';
+  resetBtn.textContent = 'Reset';
+  resetBtn.onclick = () => { state[q.id] = { selected: [], revealed: false, correct: null }; render(); };
+  actions.appendChild(resetBtn);
+  el.appendChild(actions);
+
+  // Reveal area
+  const reveal = document.createElement('div');
+  reveal.className = 'reveal';
+  reveal.dataset.for = q.id;
+  el.appendChild(reveal);
+
+  // Re-render current state
+  if (state[q.id].revealed) {
+    applyReveal(q, el);
+  }
+
+  return el;
+}
+
+function renderChoice(q, multi) {
+  const box = document.createElement('div');
+  box.className = 'options';
+  q.options.forEach((opt, i) => {
+    const div = document.createElement('div');
+    div.className = 'option';
+    if (state[q.id].selected.includes(i)) div.classList.add('selected');
+    div.innerHTML = `<span class="option-letter">${letter(i)}.</span><span>${opt}</span>`;
+    div.onclick = () => {
+      if (state[q.id].revealed) return;
+      const sel = state[q.id].selected;
+      if (multi) {
+        const idx = sel.indexOf(i);
+        if (idx >= 0) sel.splice(idx, 1); else sel.push(i);
+      } else {
+        state[q.id].selected = [i];
+      }
+      render();
+    };
+    box.appendChild(div);
+  });
+  return box;
+}
+
+function renderText(q) {
+  const ta = document.createElement('textarea');
+  ta.className = 'text-answer';
+  ta.placeholder = q.type === 'SD' ? 'Sketch your design...' : 'Type your answer...';
+  if (state[q.id].userText) ta.value = state[q.id].userText;
+  ta.oninput = () => { state[q.id].userText = ta.value; };
+  if (state[q.id].revealed) ta.disabled = true;
+  return ta;
+}
+
+function renderMatch(q) {
+  const box = document.createElement('div');
+  box.className = 'match-pairs';
+  q.pairs.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'match-row';
+    row.innerHTML = `<strong>${p.left.split('.')[0]}.</strong><span>${p.left.substring(p.left.indexOf('.')+1).trim()}</span>`;
+    box.appendChild(row);
+  });
+  const hint = document.createElement('p');
+  hint.style.fontSize = '0.85rem';
+  hint.style.color = '#64748b';
+  hint.style.marginTop = '8px';
+  hint.textContent = 'Work out the matching in your head, then click Show Answer.';
+  box.appendChild(hint);
+  return box;
+}
+
+function renderOrder(q) {
+  const box = document.createElement('div');
+  box.className = 'order-list';
+  q.items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'order-row';
+    row.innerHTML = `<span class="drag-handle">${letter(i)}.</span><span>${item}</span>`;
+    box.appendChild(row);
+  });
+  const hint = document.createElement('p');
+  hint.style.fontSize = '0.85rem';
+  hint.style.color = '#64748b';
+  hint.style.marginTop = '8px';
+  hint.innerHTML = 'Shown <em>already</em> in correct order. Memorize the sequence, then click Show Answer to see an explanation.';
+  box.appendChild(hint);
+  return box;
+}
+
+function submitChoice(q, el) {
+  const s = state[q.id];
+  if (s.selected.length === 0) return;
+  const selectedSet = new Set(s.selected);
+  const correctSet = new Set(q.correct);
+  const isCorrect = selectedSet.size === correctSet.size && [...selectedSet].every(x => correctSet.has(x));
+  s.revealed = true;
+  s.correct = isCorrect;
+  render();
+}
+
+function showTextAnswer(q, el) {
+  state[q.id].revealed = true;
+  state[q.id].correct = null; // no auto-grading
+  render();
+}
+
+function applyReveal(q, el) {
+  // Mark options
+  if (q.type === 'MCQ' || q.type === 'T/F' || q.type === 'MRQ') {
+    const opts = el.querySelectorAll('.option');
+    const selected = new Set(state[q.id].selected);
+    const correct = new Set(q.correct);
+    opts.forEach((o, i) => {
+      o.classList.add('locked');
+      if (correct.has(i) && selected.has(i)) o.classList.add('correct');
+      else if (!correct.has(i) && selected.has(i)) o.classList.add('wrong');
+      else if (correct.has(i) && !selected.has(i)) o.classList.add('missed');
+    });
+  }
+  // Reveal box
+  const reveal = el.querySelector('.reveal');
+  reveal.classList.add('show');
+  let title = 'Answer';
+  let body = '';
+  if (state[q.id].correct === true) {
+    reveal.classList.add('correct-banner');
+    title = 'Correct!';
+  } else if (state[q.id].correct === false) {
+    reveal.classList.add('wrong-banner');
+    title = 'Not quite';
+  }
+  if (q.type === 'MCQ' || q.type === 'T/F' || q.type === 'MRQ') {
+    const correctLetters = q.correct.map(i => letter(i)).join(', ');
+    body = `<strong>Correct:</strong> ${correctLetters}<br>${q.explain || ''}`;
+  } else if (q.type === 'MATCH') {
+    body = '<strong>Answer:</strong><br>' + q.pairs.map(p => `${p.left} → ${p.right}`).join('<br>');
+    if (q.explain) body += `<br><br>${q.explain}`;
+  } else if (q.type === 'ORDER') {
+    body = '<strong>Correct order:</strong><br>' + q.items.map((it, i) => `${i+1}. ${it}`).join('<br>');
+    if (q.explain) body += `<br><br>${q.explain}`;
+  } else {
+    body = `<strong>Model answer:</strong><br>${q.answer || q.explain || ''}`;
+  }
+  reveal.innerHTML = `<div class="reveal-title ${state[q.id].correct === true ? 'correct' : state[q.id].correct === false ? 'wrong' : ''}">${title}</div><div class="reveal-body">${body}</div>`;
+  updateCounts();
+}
+
+function updateCounts() {
+  const answered = Object.values(state).filter(s => s.revealed).length;
+  const correct = Object.values(state).filter(s => s.correct === true).length;
+  document.getElementById('answered-count').textContent = answered;
+  document.getElementById('correct-count').textContent = correct;
+}
+
+// ============= FILTERS =============
+let chFilter = 'all', diffFilter = 'all';
+function applyFilters() {
+  document.querySelectorAll('.question').forEach(q => {
+    const chOk = chFilter === 'all' || q.dataset.chapter === chFilter;
+    const dOk = diffFilter === 'all' || q.dataset.diff === diffFilter;
+    q.classList.toggle('hidden', !(chOk && dOk));
+  });
+  document.querySelectorAll('.chapter-heading').forEach(h => {
+    const chOk = chFilter === 'all' || h.dataset.chapter === chFilter;
+    h.style.display = chOk ? '' : 'none';
+  });
+}
+
+document.querySelectorAll('[data-filter-chapter]').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('[data-filter-chapter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    chFilter = btn.dataset.filterChapter;
+    applyFilters();
+  };
+});
+document.querySelectorAll('[data-filter-diff]').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('[data-filter-diff]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    diffFilter = btn.dataset.filterDiff;
+    applyFilters();
+  };
+});
+
+// ============= INIT =============
+render();
+</script>
+</body>
+</html>
